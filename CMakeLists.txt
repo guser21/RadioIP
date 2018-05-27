@@ -14,14 +14,20 @@ find_package(Threads)
 link_libraries(${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+file(GLOB common_src
+        "src/common/*.h"
+        "src/common/*.cpp")
 
-add_executable(Server
-        src/control_daemon.cpp
-        src/err.cpp
-        src/server_main.cpp
-        src/streaming_service.cpp)
-add_executable(Client
-        src/err.cpp
-        src/reciever_service.cpp
-        src/client_main.cpp)
+
+file(GLOB server_src
+        "src/server/*.h"
+        "src/server/*.cpp")
+
+file(GLOB client_src
+        "src/client/*.h"
+        "src/client/*.cpp")
+
+
+add_executable(Server ${server_src} ${common_src})
+add_executable(Client ${client_src} ${common_src} src/client/msg_parser.cpp include/client/msg_parser.h)
 

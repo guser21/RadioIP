@@ -14,7 +14,7 @@ private:
     boost::circular_buffer<Packet> buffer;
     int input_fd;
     std::string mcast_address;
-    int port;
+    uint16_t port;
     int packet_id = 0;
     uint64_t session_id;
 

@@ -18,5 +18,8 @@
 #define LOOKUP_MSG "ZERO_SEVEN_COME_IN"
 #define REPLY_MSG "BOREWICZ_HERE"
 #define STATION_NAME "Radio Erewań"
-
+#define RTIME 3
+#define MAX_PORT 65535
+#define UI_PORT 11501
+#define DROP_TIME 5
 #endif //RADIO_CONST_H

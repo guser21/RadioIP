@@ -14,7 +14,7 @@
 #include <thread>
 
 void ControlDaemon::start() {
-    auto th = std::thread([&]{
+    auto th = std::thread([&] {
         this->request_handler();
     });
     th.detach();
@@ -51,8 +51,8 @@ std::string ControlDaemon::station_addr() {
 void ControlDaemon::request_handler() {
     char buffer[CTRL_BUFFER_SIZE];
     ssize_t read_bytes, snd_len;
-    sockaddr_in client_addr{};
-    socklen_t socklen = sizeof(sockaddr_in);
+    struct sockaddr_in client_addr{};
+    socklen_t socklen = sizeof(client_addr);
 
     bzero(buffer, sizeof(buffer));
     bzero(&client_addr, sizeof(client_addr));
@@ -60,15 +60,17 @@ void ControlDaemon::request_handler() {
 
     while ((read_bytes = recvfrom(ctrl_socket, buffer, sizeof(buffer), 0,
                                   (struct sockaddr *) &client_addr, &socklen)) > 0) {
+        //TODO is this the full packet
         if (strncmp(buffer, LOOKUP_MSG, read_bytes) == 0) {
             std::string reply = this->station_addr();
+            printf("writing to client %s\n", reply.c_str());
             snd_len = sendto(ctrl_socket, reply.c_str(), reply.size(), 0,
-                             (struct sockaddr *) &client_addr, sizeof(client_addr));
-
-            if (snd_len < 0) syserr("sendto in control daemon request handler ");
+                             (struct sockaddr *) &client_addr, socklen);
+            if (snd_len != reply.size()) logerr("sendto in control daemon request handler ");
         } else {
             printf("TODO");
         }
+        bzero(&client_addr, sizeof(client_addr));
     }
 }
 
