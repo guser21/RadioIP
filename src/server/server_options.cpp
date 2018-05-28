@@ -1,7 +1,7 @@
 //
 // Created by guser on 5/28/18.
 //
-
+#include <boost/exception/diagnostic_information.hpp>
 #include <server/server_options.h>
 #include <boost/program_options.hpp>
 #include <iostream>
@@ -21,17 +21,17 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
             (",R", po::value<int>()->default_value(RTIME_SERVER), "retransmission period in milliseconds")
             (",n", po::value<std::string>()->default_value(STATION_NAME), "station name");
 
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
-
-    if (vm.count("help")) {
-        std::cout << desc << "\n";
-        exit(0);
-    }
 
     ServerOptions serverOptions;
     try {
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+
+        if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            exit(0);
+        }
         serverOptions.mcast_addr = vm["-a"].as<std::string>();
         serverOptions.data_port = vm["-P"].as<uint16_t>();
         serverOptions.ctrl_port = vm["-C"].as<uint16_t>();
@@ -39,8 +39,8 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
         serverOptions.fifo_size = vm["-f"].as<int>();
         serverOptions.rtime = vm["-R"].as<int>();
         serverOptions.station_name = vm["-n"].as<std::string>();
-    } catch (std::exception &ex) {
-        std::cerr << ex.what();
+    } catch (std::exception &err) {
+        std::cout << err.what() << std::endl;
         exit(1);
     }
 
