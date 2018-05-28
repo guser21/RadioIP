@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(Radio)
 
 set(CMAKE_CXX_STANDARD 17)
+
 FIND_PACKAGE(Boost)
 IF (Boost_FOUND)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -11,9 +12,12 @@ ENDIF ()
 find_package(Threads)
 
 
+FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
+
+include_directories(${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIR})
+
 link_libraries(${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
 file(GLOB common_src
         "src/common/*.h"
         "src/common/*.cpp")
@@ -29,5 +33,4 @@ file(GLOB client_src
 
 
 add_executable(Server ${server_src} ${common_src})
-add_executable(Client ${client_src} ${common_src} src/client/msg_parser.cpp include/client/msg_parser.h)
-
+add_executable(Client ${client_src} ${common_src})

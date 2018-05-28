@@ -6,16 +6,15 @@
 #include <common/const.h>
 #include <client/discover_service.h>
 #include <common/vec_mutex.h>
+#include <client/client_options.h>
 
-int main() {
+int main(int argc, char* argv[]) {
+    ClientOptionsParser parser;
+    auto clientOptions=parser.parse(argc,argv);
+    DiscoverService discoverService(DISCOVER_ADDR, CTRL_PORT, RTIME);
+    UIService uiService(UI_PORT);
 
-    VecMutex<Station> vecMutex{};
-
-    DiscoverService discoverService(DISCOVER_ADDR, CTRL_PORT, RTIME, &vecMutex);
-    discoverService.setup();
-    discoverService.start();
-
-    ReceiverService receiverService(discoverService.get_disc_sock());
+    ReceiverService receiverService(discoverService,uiService);
     receiverService.start();
 
     return 0;

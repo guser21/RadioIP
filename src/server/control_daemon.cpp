@@ -60,7 +60,7 @@ void ControlDaemon::request_handler() {
 
     while ((read_bytes = recvfrom(ctrl_socket, buffer, sizeof(buffer), 0,
                                   (struct sockaddr *) &client_addr, &socklen)) > 0) {
-        //TODO is this the full packet
+        //TODO is this the full packet?
         if (strncmp(buffer, LOOKUP_MSG, read_bytes) == 0) {
             std::string reply = this->station_addr();
             printf("writing to client %s\n", reply.c_str());
@@ -74,8 +74,12 @@ void ControlDaemon::request_handler() {
     }
 }
 
-ControlDaemon::ControlDaemon(int ctrl_port, std::string mcast_addr, int data_port,
-                             std::string station_name) : ctrl_port(ctrl_port), mcast_addr(std::move(mcast_addr)),
-                                                         data_port(data_port),
-                                                         station_name(std::move(station_name)) {}
+
+ControlDaemon::ControlDaemon(ServerOptions serverOptions) {
+    this->ctrl_port=serverOptions.ctrl_port;
+    this->mcast_addr=serverOptions.mcast_addr;
+    this->data_port=serverOptions.data_port;
+    this->station_name=serverOptions.station_name;
+
+}
 

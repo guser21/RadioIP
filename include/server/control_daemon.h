@@ -8,20 +8,22 @@
 #include <string>
 #include <mutex>
 #include "common/const.h"
+#include "server_options.h"
 
 class ControlDaemon {
 private:
 
-    int ctrl_port;
+    uint16_t ctrl_port;
     std::string mcast_addr;
-    int data_port;
-    int ctrl_socket;
+    uint16_t data_port;
+    uint16_t ctrl_socket;
     std::string station_name;
 
     void request_handler();
 
 public:
-    ControlDaemon(int ctrl_port, std::string mcast_addr, int data_port, std::string station_name);
+    explicit ControlDaemon(ServerOptions serverOptions);
+
     void setup();
 
     void start();

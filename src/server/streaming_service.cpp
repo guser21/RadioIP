@@ -31,7 +31,7 @@ void StreamingService::setup() {
 
     bzero(&remote_address, sizeof(remote_address));
     remote_address.sin_family = AF_INET;
-    remote_address.sin_port = htons(port);
+    remote_address.sin_port = htons(data_port);//why data_port?
 
     if (inet_aton(mcast_address.c_str(), &remote_address.sin_addr) == 0)
         syserr("inet_aton");
@@ -44,7 +44,7 @@ void StreamingService::setup() {
 }
 
 void StreamingService::start() {
-    char read_buffer[PSIZE];
+    char read_buffer[packet_size];
     Packet packet{};
     ssize_t read_chars, packed_chars = 0;
 
@@ -55,9 +55,10 @@ void StreamingService::start() {
         for (int j = 0; j < read_chars; ++j) {
             packet.audio_data[packed_chars] = read_buffer[j];
             packed_chars++;
-            if (packed_chars == PSIZE) {
+            if (packed_chars == packet_size) {
                 packet.session_id = this->session_id;
-                packet.first_byte_num = packet_id * PSIZE;
+                packet.first_byte_num = packet_id * packet_size;
+                //TODO with htons
                 write(stream_sock, reinterpret_cast<char *>(&packet), sizeof(packet)); //may be worst idea ever
 
                 buffer.push_back(packet);
@@ -71,9 +72,16 @@ void StreamingService::start() {
 
 StreamingService::~StreamingService() = default;
 
-StreamingService::StreamingService(int input_fd, const std::string &mcast_address, int port) :
-        input_fd(input_fd), mcast_address(mcast_address), port(port) {
-    buffer.set_capacity(BSIZE / PSIZE);
+
+StreamingService::StreamingService(ServerOptions serverOptions) {
+    this->packet_size = serverOptions.packet_size;
+    this->fifo_size = serverOptions.fifo_size;
+    this->data_port = serverOptions.data_port;
+    this->mcast_address=serverOptions.mcast_addr;
+
+    this->input_fd=STDIN_FILENO;
+
+    buffer.set_capacity(static_cast<unsigned long>(serverOptions.fifo_size / serverOptions.packet_size));
     session_id = static_cast<uint64_t>(std::time(nullptr));
 }
 

@@ -7,6 +7,7 @@
 
 #include <boost/circular_buffer.hpp>
 #include <common/packet_dto.h>
+#include "server_options.h"
 
 class StreamingService {
 private:
@@ -14,16 +15,16 @@ private:
     boost::circular_buffer<Packet> buffer;
     int input_fd;
     std::string mcast_address;
-    uint16_t port;
     int packet_id = 0;
     uint64_t session_id;
+    uint16_t data_port;
+    int fifo_size;
+    int packet_size;
 
 public:
     virtual ~StreamingService();
 
-    StreamingService(int input_fd, const std::string &mcast_address, int port);
-
-
+    StreamingService(ServerOptions serverOptions);
     void setup();
 
     void start();

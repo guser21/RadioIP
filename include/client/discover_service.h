@@ -17,18 +17,17 @@ private:
     std::string discover_addr;
     int disc_socket;
 public:
-    int get_disc_sock() const;
+    DiscoverService(const std::string &discover_addr, uint16_t ctrl_port, unsigned int rtime);
 
 private:
     uint16_t ctrl_port;
     unsigned int rtime;
-    VecMutex<Station> *vecMutex;
     sockaddr_in broadcast_addr{};
 public:
-
-    DiscoverService(std::string discover_addr, uint16_t ctrl_port, unsigned int rtime, VecMutex<Station> *vecMutex);
-
     void setup();
+
+
+    int get_disc_sock() const;
 
     void start();
 };

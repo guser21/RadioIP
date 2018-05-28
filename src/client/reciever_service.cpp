@@ -22,6 +22,8 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
+//TODO refactor too big function
+//TODO TCP takes too many cycles of cpu
 void ReceiverService::start() {
     int nfds;
     char reply_buffer[CTRL_BUFFER_SIZE];
@@ -30,10 +32,9 @@ void ReceiverService::start() {
     int packed_bytes = 0;
     Packet *packet;
 
-    setup();
 
     //it is guaranteed that vector allocates continuous memory blocks
-    while ((nfds = poll(&connections[0], connections.size(), 0) >= 0)) {
+    while ((nfds = poll(&connections[0], connections.size(), -1) >= 0)) {
         if (connections[0].revents & POLLIN) {
             nfds--;
             bzero(reply_buffer, CTRL_BUFFER_SIZE);
@@ -68,40 +69,20 @@ void ReceiverService::start() {
                 }
             }
         }
+
+
         //TODO ui ports
 
-
+        std::transform(connections.begin(), connections.end(), connections.begin(), [](struct pollfd p) {
+            p.revents = 0;
+            return p;
+        });
     }
     if (nfds < 0) perror("error in poll");
 }
 
 #pragma clang diagnostic pop
 
-int ReceiverService::get_uisocket() {
-    //TODO
-    return -1;
-}
-
-void ReceiverService::setup() {
-    struct pollfd server_reply;
-    server_reply.fd = this->server_reply_sock;
-    server_reply.events = POLLIN;
-    server_reply.revents = 0;
-    connections.push_back(server_reply);
-
-    struct pollfd current_server;
-    current_server.fd = -1;
-    current_server.events = POLLIN;
-    current_server.revents = 0;
-    connections.push_back(current_server);
-
-    struct pollfd uiserver;
-    current_server.fd = get_uisocket();
-    current_server.events = POLLIN;
-    current_server.revents = 0;
-    connections.push_back(current_server);
-
-}
 
 int ReceiverService::get_station_fd(Station cur_station) {
 
@@ -156,7 +137,49 @@ void ReceiverService::discover_handler(const std::string &msg) {
 
 }
 
+ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService) :
+        discoverService(discoverService),
+        uiService(uiService) {
+    this->discoverService.setup();
+    this->discoverService.start();
 
-ReceiverService::ReceiverService(int server_reply_sock) : server_reply_sock(server_reply_sock) {
+    this->server_reply_sock = discoverService.get_disc_sock();
+
+    this->setup();
+
+    //TODO BAD DESIGN
+    this->uiService.setStations(&stations);
+    this->uiService.setup();
+
+    this->ui_socket = uiService.get_reg_socket();
+
+}
+
+/*
+ *Convention
+ *  0 - server_reply socket UDP
+ *  1 - current server socket UDP
+ *  2 - ui register socket TCP
+ * */
+void ReceiverService::setup() {
+
+
+    struct pollfd server_reply;
+    server_reply.fd = this->server_reply_sock;
+    server_reply.events = POLLIN;
+    server_reply.revents = 0;
+    connections.push_back(server_reply);
+
+    struct pollfd current_server;
+    current_server.fd = -1;
+    current_server.events = POLLIN;
+    current_server.revents = 0;
+    connections.push_back(current_server);
+
+    struct pollfd ui_server;
+    ui_server.fd = ui_socket;
+    ui_server.events = POLLIN;
+    ui_server.revents = 0;
+    connections.push_back(ui_server);
 
 }

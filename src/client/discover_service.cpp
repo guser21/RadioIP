@@ -27,7 +27,7 @@ void DiscoverService::setup() {
     bzero(&disc_addr, sizeof(disc_addr));
 
     disc_addr.sin_family = AF_INET;
-    disc_addr.sin_port = htons(ctrl_port);//port
+    disc_addr.sin_port = htons(ctrl_port);//data_port
 
     int rtvl = inet_pton(AF_INET, discover_addr.c_str(), &disc_addr.sin_addr);//ip address
     if (rtvl < 0) syserr("inet_pton discover service");
@@ -51,6 +51,11 @@ void DiscoverService::setup() {
     this->broadcast_addr = disc_addr;
 }
 
+int DiscoverService::get_disc_sock() const {
+    return disc_socket;
+}
+
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
@@ -67,13 +72,9 @@ void DiscoverService::start() {
     }).detach();
 }
 
-DiscoverService::DiscoverService(std::string discover_addr, uint16_t ctrl_port, unsigned int rtime,
-                                 VecMutex<Station> *vecMutex) : discover_addr(std::move(discover_addr)),
-                                                                ctrl_port(ctrl_port), rtime(rtime),
-                                                                vecMutex(vecMutex) {}
-
-int DiscoverService::get_disc_sock() const {
-    return disc_socket;
-}
 
 #pragma clang diagnostic pop
+
+DiscoverService::DiscoverService(const std::string &discover_addr, uint16_t ctrl_port,
+                                 unsigned int rtime) : discover_addr(discover_addr),
+                                                       ctrl_port(ctrl_port), rtime(rtime) {}
