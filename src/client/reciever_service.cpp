@@ -175,9 +175,10 @@ void ReceiverService::setup() {
     current_server.events = POLLIN;
     current_server.revents = 0;
     connections.push_back(current_server);
-
+    //TODO turn on ui service
     struct pollfd ui_server;
-    ui_server.fd = ui_socket;
+//    ui_server.fd = ui_socket;
+    ui_server.fd = -1;
     ui_server.events = POLLIN;
     ui_server.revents = 0;
     connections.push_back(ui_server);

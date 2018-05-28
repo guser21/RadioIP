@@ -60,7 +60,6 @@ void ControlDaemon::request_handler() {
 
     while ((read_bytes = recvfrom(ctrl_socket, buffer, sizeof(buffer), 0,
                                   (struct sockaddr *) &client_addr, &socklen)) > 0) {
-        //TODO is this the full packet?
         if (strncmp(buffer, LOOKUP_MSG, read_bytes) == 0) {
             std::string reply = this->station_addr();
             printf("writing to client %s\n", reply.c_str());

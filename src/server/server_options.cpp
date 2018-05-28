@@ -32,6 +32,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
             std::cout << desc << std::endl;
             exit(0);
         }
+
         serverOptions.mcast_addr = vm["-a"].as<std::string>();
         serverOptions.data_port = vm["-P"].as<uint16_t>();
         serverOptions.ctrl_port = vm["-C"].as<uint16_t>();
@@ -39,6 +40,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
         serverOptions.fifo_size = vm["-f"].as<int>();
         serverOptions.rtime = vm["-R"].as<int>();
         serverOptions.station_name = vm["-n"].as<std::string>();
+
     } catch (std::exception &err) {
         std::cout << err.what() << std::endl;
         exit(1);

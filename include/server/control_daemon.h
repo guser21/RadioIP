@@ -16,7 +16,7 @@ private:
     uint16_t ctrl_port;
     std::string mcast_addr;
     uint16_t data_port;
-    uint16_t ctrl_socket;
+    int ctrl_socket;
     std::string station_name;
 
     void request_handler();
