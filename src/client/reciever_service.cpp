@@ -16,6 +16,7 @@
 #include <strings.h>
 #include <thread>
 #include <algorithm>
+#include <fcntl.h>
 //TODO dropout
 
 
@@ -26,7 +27,7 @@
 //TODO TCP takes too many cycles of cpu
 void ReceiverService::start() {
     int nfds;
-    char reply_buffer[CTRL_BUFFER_SIZE];
+    char reply_buffer[READ_BUFFER_SIZE];
     char read_buffer[10 * sizeof(Packet)], packet_buffer[sizeof(Packet)];
     ssize_t read_bytes;
     int packed_bytes = 0;
@@ -52,9 +53,11 @@ void ReceiverService::start() {
 
         if (connections[1].revents & POLLIN) {
             nfds--;
+            //TODO what if I have got 100 packets and after that only one revent is marked
+            //TODO Will I get called 100 times or should my read_buffer be big enough?
+
             read_bytes = read(connections[1].fd, read_buffer, sizeof(read_buffer));
             if (read_bytes < sizeof(Packet)) continue;
-
             for (int j = 0; j < read_bytes; ++j) {
                 packet_buffer[packed_bytes] = read_buffer[j];
                 packed_bytes++;
@@ -68,6 +71,9 @@ void ReceiverService::start() {
                     packed_bytes = 0;
                 }
             }
+        }
+        if(connections[2].revents & POLLOUT){
+            nfds--;
         }
 
 
@@ -159,7 +165,8 @@ ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &ui
  *Convention
  *  0 - server_reply socket UDP
  *  1 - current server socket UDP
- *  2 - ui register socket TCP
+ *  2 - std out non blocking
+ *  3 - ui register socket TCP
  * */
 void ReceiverService::setup() {
 
@@ -175,6 +182,17 @@ void ReceiverService::setup() {
     current_server.events = POLLIN;
     current_server.revents = 0;
     connections.push_back(current_server);
+
+    struct pollfd stdout_fd;
+    stdout_fd.fd = STDOUT_FILENO;
+    stdout_fd.events = POLLOUT;
+    stdout_fd.revents = 0;
+    connections.push_back(stdout_fd);
+
+    //Setting stdout to non-block
+    if (fcntl(stdout_fd.fd, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl");
+
+
     //TODO turn on ui service
     struct pollfd ui_server;
 //    ui_server.fd = ui_socket;
