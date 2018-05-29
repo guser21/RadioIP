@@ -3,6 +3,10 @@ project(Radio)
 
 set(CMAKE_CXX_STANDARD 17)
 
+find_package(GTest REQUIRED)
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+
 FIND_PACKAGE(Boost)
 IF (Boost_FOUND)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -12,7 +16,7 @@ ENDIF ()
 find_package(Threads)
 
 
-FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
+find_package(Boost COMPONENTS program_options REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIR})
 
@@ -32,5 +36,11 @@ file(GLOB client_src
         "src/client/*.cpp")
 
 
+
+
 add_executable(Server ${server_src} ${common_src})
 add_executable(Client ${client_src} ${common_src})
+
+
+add_subdirectory(test)
+enable_testing()

@@ -49,7 +49,7 @@ std::pair<int, char *> Buffer::read() {
     int readable = 1;
 
     if (last_read != -1 && (last_read != byte_id[read_index] - 1)) {
-        return std::pair<int, char *>(-1, nullptr);
+        return std::pair<int, char *>(0, nullptr);
     }
 
     for (int i = read_index; i < size - 1; ++i) {
