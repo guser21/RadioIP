@@ -35,11 +35,14 @@ file(GLOB client_src
         "src/client/*.h"
         "src/client/*.cpp")
 
+file(GLOB server_main src/server/server_main.cpp)
+file(GLOB client_main src/client/client_main.cpp)
 
+list(REMOVE_ITEM client_src ${client_main})
+list(REMOVE_ITEM server_src ${server_main})
 
-
-add_executable(Server ${server_src} ${common_src})
-add_executable(Client ${client_src} ${common_src})
+add_executable(Server ${server_main} ${server_src} ${common_src})
+add_executable(Client ${client_main} ${client_src} ${common_src})
 
 
 add_subdirectory(test)
