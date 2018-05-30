@@ -13,6 +13,7 @@ struct ClientOptions {
     uint16_t ui_port;
     int buffer_size;
     int rtime;
+    std::string prefer_station;
 };
 
 class ClientOptionsParser {

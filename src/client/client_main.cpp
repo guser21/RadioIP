@@ -8,13 +8,14 @@
 #include <common/vec_mutex.h>
 #include <client/client_options.h>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     ClientOptionsParser parser;
-    auto clientOptions=parser.parse(argc,argv);
+    auto clientOptions = parser.parse(argc, argv);
+
     DiscoverService discoverService(DISCOVER_ADDR, CTRL_PORT, RTIME);
     UIService uiService(UI_PORT);
-
-    ReceiverService receiverService(discoverService,uiService);
+    clientOptions.buffer_size = 8;
+    ReceiverService receiverService(discoverService, uiService, clientOptions);
     receiverService.start();
 
     return 0;

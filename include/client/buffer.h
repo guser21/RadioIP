@@ -6,6 +6,7 @@
 #define RADIO_BUFFER_H
 
 #include <utility>
+#include <stdint-gcc.h>
 /**
  * character and byte index
  * */
@@ -14,18 +15,19 @@ class Buffer {
 private:
     int size;
     int read_index = 0;
-    int busy = 0;
+    __int128 last_read = -1;
+    __int128 last_byteId=-1;
     char *data;
-    int *byte_id;
-    int last_read=-1;
+    __int128 *byteId;
 public:
+
     explicit Buffer(int size);
 
     ~Buffer();
 
-    double load();
+    __int128 get_lastId();
 
-    void push(char arr[], int size, int first_byte);
+    void push(const char arr[], int size, int first_byte);
 
     void clean();
 

@@ -17,6 +17,7 @@ ClientOptions ClientOptionsParser::parse(int argc, char **argv) {
             (",C", po::value<uint16_t>()->default_value(CTRL_PORT), "set control data_port")
             (",U", po::value<uint16_t>()->default_value(UI_PORT), "set ui data_port")
             (",B", po::value<int>()->default_value(BSIZE), "set buffer size ")
+            (",n", po::value<std::string>(), "set desired station name ")
             (",R", po::value<int>()->default_value(RTIME_CLIENT), "lookup request period in seconds");
 
     ClientOptions clientOptions;
@@ -29,6 +30,7 @@ ClientOptions ClientOptionsParser::parse(int argc, char **argv) {
             std::cout << desc << std::endl;
             exit(0);
         }
+        //TODO option -n
 
         clientOptions.discover_addr = vm["-d"].as<std::string>();
         clientOptions.ctrl_port = vm["-C"].as<uint16_t>();
@@ -36,7 +38,7 @@ ClientOptions ClientOptionsParser::parse(int argc, char **argv) {
         clientOptions.buffer_size = vm["-B"].as<int>();
         clientOptions.rtime = vm["-R"].as<int>();
     } catch (std::exception &err) {
-        std::cerr << err.what()<<std::endl;
+        std::cerr << err.what() << std::endl;
         exit(1);
     }
 

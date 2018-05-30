@@ -11,7 +11,25 @@
 #include "msg_parser.h"
 #include "ui_service.h"
 #include "discover_service.h"
+#include "client_options.h"
+#include "buffer.h"
 #include <poll.h>
+
+enum Reason {
+    DROP_STATION,
+    MISSING_PACKAGE
+};
+
+struct Session {
+    __int128 byte0=-1;
+    __int128 session_id=-1;
+    Station station=InvalidStation;
+    void clean() {
+        byte0 = -1;
+        session_id = -1;
+        station=InvalidStation;
+    }
+};
 
 
 class ReceiverService {
@@ -20,23 +38,37 @@ private:
     int server_reply_sock;
     MsgParser msgParser;
     std::vector<Station> stations;
+
     UIService &uiService;
-    DiscoverService& discoverService;
+    DiscoverService &discoverService;
+    Session session;
     int ui_socket;
+    int rtime;
+    int buffer_size;
+    int data_socket;
+
+
+    struct ip_mreq request{};
 
 public:
 
     void start();
 
+    ReceiverService(DiscoverService &discoverService, UIService &uiService, ClientOptions clientOptions);
 
-    explicit ReceiverService(DiscoverService& discoverService,UIService& uiService );
-
-    int get_station_fd(Station cur_station);
+    int connect(Station cur_station);
 
     void discover_handler(const std::string &msg);
 
     void setup();
 
+    void disconnect();
+
+    void restart(Reason r,Buffer& buffer);
+
+    void check_timeout();
+
+    void check_timeout(Buffer &buffer);
 };
 
 #endif //RADIO_RECIEVER_SERVICE_H

@@ -9,7 +9,6 @@
 #include <netinet/in.h>
 #include <strings.h>
 #include <arpa/inet.h>
-#include <time.h>
 #include <ctime>
 
 #pragma clang diagnostic push

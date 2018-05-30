@@ -2,7 +2,6 @@
 // Created by guser on 5/24/18.
 //
 
-#include <client/reciever_service.h>
 #include <cstdio>
 #include <zconf.h>
 #include <sys/socket.h>
@@ -12,70 +11,119 @@
 #include <utility>
 #include <common/err.h>
 #include <common/const.h>
-#include <common/packet_dto.h>
 #include <strings.h>
 #include <thread>
 #include <algorithm>
 #include <fcntl.h>
-//TODO dropout
+#include <client/buffer.h>
+#include <client/reciever_service.h>
+#include <iostream>
+
+
+struct __attribute__((packed)) Packet {
+    uint64_t session_id;
+    uint64_t first_byte_num;
+    char *audio_data;
+};
 
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
+//TODO BAD CODE
+void ReceiverService::restart(Reason r, Buffer &buffer) {
+    session.clean();
+    buffer.clean();
+
+    connections[2].events = 0;
+    connections[1].fd = -1;
+    switch (r) {
+        case DROP_STATION:
+            if (!stations.empty()) {
+                connections[1].fd = connect(stations[0]);
+                session.station = stations[0];
+            }
+        case MISSING_PACKAGE:
+            return;
+        default:
+            return;
+    }
+
+}
+
+void ReceiverService::check_timeout(Buffer &buffer) {
+    auto cur_time = time(nullptr);
+    for (int i = 0; i < stations.size(); ++i) {
+        if (cur_time - stations[i].last_discover > DROP_TIMEOUT) {
+            stations.erase(stations.begin() + i);
+            auto erased_station = stations[i];
+            if (session.station == erased_station) {
+                restart(DROP_STATION, buffer);
+                std::cout<<"dropping";
+                std::flush(std::cout);
+            }
+        }
+    }
+}
+
 //TODO refactor too big function
 //TODO TCP takes too many cycles of cpu
 void ReceiverService::start() {
+
     int nfds;
     char reply_buffer[READ_BUFFER_SIZE];
-    char read_buffer[10 * sizeof(Packet)], packet_buffer[sizeof(Packet)];
-    ssize_t read_bytes;
-    int packed_bytes = 0;
+    auto read_buffer = new char[MAX_UDP_SIZE];
     Packet *packet;
-
+    Buffer buffer(buffer_size);//TODO smth with this
 
     //it is guaranteed that vector allocates continuous memory blocks
-    while ((nfds = poll(&connections[0], connections.size(), -1) >= 0)) {
+    while ((nfds = poll(&connections[0], connections.size(), DROP_TIMEOUT)) >= 0) {
+        if (nfds < 0) perror("error in poll");
+        check_timeout(buffer);
+        //0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
             nfds--;
             bzero(reply_buffer, CTRL_BUFFER_SIZE);
 
-            //TODO do in while until everything is read
-            read_bytes = read(connections[0].fd, reply_buffer, sizeof(reply_buffer));
+            auto read_bytes = read(connections[0].fd, reply_buffer, sizeof(reply_buffer));
+            if (read_bytes < 0) logerr("read in 0th fd");
             discover_handler(reply_buffer);
-
             //TODO refactor really bad code
             if (connections[1].fd == -1 && !stations.empty()) {
                 //TODO option with -n
-                connections[1].fd = get_station_fd(stations[0]);
+                connections[1].fd = connect(stations[0]);
+                session.station = stations[0];
             }
         }
 
+        //current server
         if (connections[1].revents & POLLIN) {
             nfds--;
-            //TODO what if I have got 100 packets and after that only one revent is marked
-            //TODO Will I get called 100 times or should my read_buffer be big enough?
+            auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
+            // TODO improve, bad code
+            packet = reinterpret_cast<Packet *> (read_buffer);
+            // 2 8byte numbers
+            buffer.push(read_buffer + 16, read_bytes - 16, packet->first_byte_num);
 
-            read_bytes = read(connections[1].fd, read_buffer, sizeof(read_buffer));
-            if (read_bytes < sizeof(Packet)) continue;
-            for (int j = 0; j < read_bytes; ++j) {
-                packet_buffer[packed_bytes] = read_buffer[j];
-                packed_bytes++;
-                if (packed_bytes == sizeof(Packet)) {
-                    packet = reinterpret_cast<Packet *> (packet_buffer);
-                    printf("session_id %lu \n", packet->session_id);
-                    printf("first_byte %lu\n", packet->first_byte_num);
-                    write(STDOUT_FILENO, packet->audio_data, PSIZE);
-                    printf("\n");
+            if (session.byte0 == -1) {
+                session.byte0 = packet->first_byte_num;
+            }
 
-                    packed_bytes = 0;
-                }
+            if (buffer.get_lastId() > session.byte0 + 3 * (buffer_size / 4)) {
+                connections[2].events = POLLOUT;
             }
         }
-        if(connections[2].revents & POLLOUT){
+        //STDOUT
+        if (connections[2].revents & POLLOUT) {
             nfds--;
+            auto readable = buffer.read();
+            if (readable.first == 0) {
+                restart(MISSING_PACKAGE, buffer);
+                continue;
+            }
+            auto written_data = write(connections[2].fd, readable.second, readable.first);
+            buffer.commit_read(written_data);
         }
-
 
         //TODO ui ports
 
@@ -84,27 +132,28 @@ void ReceiverService::start() {
             return p;
         });
     }
-    if (nfds < 0) perror("error in poll");
+    delete read_buffer;
 }
 
 #pragma clang diagnostic pop
 
 
-int ReceiverService::get_station_fd(Station cur_station) {
-
-
+int ReceiverService::connect(Station cur_station) {
     struct sockaddr_in local_address{};
-    struct ip_mreq ip_mreq{};
 
     int stream_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (stream_sock < 0)syserr("socket");
 
-    ip_mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    request.imr_interface.s_addr = htonl(INADDR_ANY);
 
-    if (inet_aton(cur_station.mcast_addr.c_str(), &ip_mreq.imr_multiaddr) == 0)
+    if (inet_aton(cur_station.mcast_addr.c_str(), &request.imr_multiaddr) == 0)
         syserr("inet_aton");
 
-    if (setsockopt(stream_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *) &ip_mreq, sizeof ip_mreq) < 0)
+    if (setsockopt(stream_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *) &request, sizeof request) < 0)
+        syserr("setsockopt");
+
+    int option = 1;
+    if (setsockopt(stream_sock, SOL_SOCKET, SO_REUSEADDR, (void *) &option, sizeof option) < 0)
         syserr("setsockopt");
 
     bzero(&local_address, sizeof(local_address));
@@ -116,7 +165,15 @@ int ReceiverService::get_station_fd(Station cur_station) {
 //    connect(stream_sock, (struct sockaddr *) &local_address, sizeof(local_address));
     if (bind(stream_sock, (struct sockaddr *) &local_address, sizeof local_address) < 0)
         syserr("bind");
+
+    data_socket = stream_sock;
     return stream_sock;
+}
+
+void ReceiverService::disconnect() {
+    if (setsockopt(data_socket, IPPROTO_IP, IP_DROP_MEMBERSHIP, (void *) &request, sizeof request) < 0)
+        syserr("setsockopt");
+    close(data_socket);
 }
 
 
@@ -143,9 +200,12 @@ void ReceiverService::discover_handler(const std::string &msg) {
 
 }
 
-ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService) :
+ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService, ClientOptions clientOptions) :
         discoverService(discoverService),
         uiService(uiService) {
+    this->buffer_size = clientOptions.buffer_size;
+    this->rtime = clientOptions.rtime;
+
     this->discoverService.setup();
     this->discoverService.start();
 
@@ -171,6 +231,8 @@ ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &ui
 void ReceiverService::setup() {
 
 
+    session.clean();
+
     struct pollfd server_reply;
     server_reply.fd = this->server_reply_sock;
     server_reply.events = POLLIN;
@@ -185,12 +247,12 @@ void ReceiverService::setup() {
 
     struct pollfd stdout_fd;
     stdout_fd.fd = STDOUT_FILENO;
-    stdout_fd.events = POLLOUT;
+    stdout_fd.events = 0;
     stdout_fd.revents = 0;
     connections.push_back(stdout_fd);
 
     //Setting stdout to non-block
-    if (fcntl(stdout_fd.fd, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl");
+    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl in setup");
 
 
     //TODO turn on ui service
@@ -200,5 +262,4 @@ void ReceiverService::setup() {
     ui_server.events = POLLIN;
     ui_server.revents = 0;
     connections.push_back(ui_server);
-
 }

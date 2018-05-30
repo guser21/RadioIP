@@ -7,7 +7,10 @@
 
 #include <cstdint>
 #include <common/const.h>
-struct Packet {
+
+//TODO delete PSIZE
+//TODO packed
+struct __attribute__ ((packed)) Packet {
     uint64_t session_id;
     uint64_t first_byte_num;
     char audio_data[PSIZE];

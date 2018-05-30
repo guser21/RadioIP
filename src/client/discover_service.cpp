@@ -34,19 +34,18 @@ void DiscoverService::setup() {
 
     int enable_broadcast = 1;
     rtvl = setsockopt(disc_socket, SOL_SOCKET, SO_BROADCAST, &enable_broadcast, sizeof(enable_broadcast));
-    if (rtvl < 0) syserr("setsockopt failed in discover get_station_fd");
+    if (rtvl < 0) syserr("setsockopt failed in discover connect");
 
     struct sockaddr_in local_address{};
     bzero(&local_address, sizeof(local_address));
 
-    //TODO do I need to bind to address because the read may start earlier than send to
-
+//OK
     local_address.sin_family = AF_INET;
     local_address.sin_addr.s_addr = htonl(INADDR_ANY);
     local_address.sin_port = htons(0);
 
     rtvl = bind(disc_socket, (struct sockaddr *) &local_address, sizeof(local_address));
-    if (rtvl < 0) syserr("bind in discover service get_station_fd");
+    if (rtvl < 0) syserr("bind in discover service connect");
 
     this->broadcast_addr = disc_addr;
 }
