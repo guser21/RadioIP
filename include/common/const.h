@@ -9,7 +9,7 @@
 #define CTRL_PORT 31501
 #define MCAST_ADDR "224.34.122.2"
 #define DISCOVER_ADDR "255.255.255.255"
-#define PSIZE 8
+#define PSIZE 5120
 #define BSIZE 65536
 #define FSIZE 131072
 #define TTL_VALUE 60
@@ -25,7 +25,7 @@
 #define RTIME_SERVER 250
 #define MAX_PORT 65535
 #define UI_PORT 11501
-#define DROP_TIMEOUT 5
+#define DROP_TIMEOUT 20
 #define QUEUE_LENGTH 5
 #define MAX_UDP_SIZE (65535+1000)
 const char UP_KEY[] = {27, 91, 65};

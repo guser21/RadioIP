@@ -24,6 +24,9 @@ void StreamingService::setup() {
     if (setsockopt(stream_sock, SOL_SOCKET, SO_BROADCAST, (void *) &optval, sizeof optval) < 0)
         syserr("setsockopt broadcast");
 
+    if (setsockopt(stream_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
+        syserr("setsockopt reuseaddr in server");
+
     optval = TTL_VALUE;
     if (setsockopt(stream_sock, IPPROTO_IP, IP_MULTICAST_TTL, (void *) &optval, sizeof optval) < 0)
         syserr("setsockopt multicast ttl");
@@ -43,8 +46,10 @@ void StreamingService::setup() {
 }
 
 void StreamingService::start() {
+
     char read_buffer[packet_size];
-    Packet packet{};
+    Packet *packet = static_cast<Packet *>(malloc(sizeof(Packet) + packet_size + 1));
+
     ssize_t read_chars, packed_chars = 0;
 
     bzero(read_buffer, sizeof(read_buffer));
@@ -52,21 +57,23 @@ void StreamingService::start() {
     while ((read_chars = read(input_fd, read_buffer, sizeof(read_buffer))) > 0) {
 
         for (int j = 0; j < read_chars; ++j) {
-            packet.audio_data[packed_chars] = read_buffer[j];
+            packet->audio_data[packed_chars] = read_buffer[j];
             packed_chars++;
             if (packed_chars == packet_size) {
-                packet.session_id = this->session_id;
-                packet.first_byte_num = packet_id * packet_size;
+                packet->session_id = this->session_id;
+                packet->first_byte_num = packet_id * packet_size;
                 //TODO with htons
-                write(stream_sock, reinterpret_cast<char *>(&packet), sizeof(packet)); //may be worst idea ever
-
-                buffer.push_back(packet);
+                write(stream_sock, reinterpret_cast<char *>(packet), packet_size + 16); //may be worst idea ever
+//                write(STDERR_FILENO, packet->audio_data, packet_size); //may be worst idea ever
+//                fprintf(stderr, "written to socket %s", packet->audio_data);
+//                buffer->push_back(packet);
 
                 packed_chars = 0;
                 packet_id++;
             }
         }
     }
+    free(packet);
 }
 
 StreamingService::~StreamingService() = default;
@@ -76,9 +83,9 @@ StreamingService::StreamingService(ServerOptions serverOptions) {
     this->packet_size = serverOptions.packet_size;
     this->fifo_size = serverOptions.fifo_size;
     this->data_port = serverOptions.data_port;
-    this->mcast_address=serverOptions.mcast_addr;
+    this->mcast_address = serverOptions.mcast_addr;
 
-    this->input_fd=STDIN_FILENO;
+    this->input_fd = STDIN_FILENO;
 
     buffer.set_capacity(static_cast<unsigned long>(serverOptions.fifo_size / serverOptions.packet_size));
     session_id = static_cast<uint64_t>(std::time(nullptr));

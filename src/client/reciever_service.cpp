@@ -54,12 +54,12 @@ void ReceiverService::restart(Reason r, Buffer &buffer) {
 void ReceiverService::check_timeout(Buffer &buffer) {
     auto cur_time = time(nullptr);
     for (int i = 0; i < stations.size(); ++i) {
-        if (cur_time - stations[i].last_discover > DROP_TIMEOUT) {
+        if ((cur_time - stations[i].last_discover) > DROP_TIMEOUT) {
             stations.erase(stations.begin() + i);
             auto erased_station = stations[i];
             if (session.station == erased_station) {
                 restart(DROP_STATION, buffer);
-                std::cout<<"dropping";
+                std::cout << "dropping";
                 std::flush(std::cout);
             }
         }
@@ -77,7 +77,7 @@ void ReceiverService::start() {
     Buffer buffer(buffer_size);//TODO smth with this
 
     //it is guaranteed that vector allocates continuous memory blocks
-    while ((nfds = poll(&connections[0], connections.size(), DROP_TIMEOUT)) >= 0) {
+    while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) perror("error in poll");
         check_timeout(buffer);
         //0 - server_reply socket UDP
@@ -92,6 +92,8 @@ void ReceiverService::start() {
             if (connections[1].fd == -1 && !stations.empty()) {
                 //TODO option with -n
                 connections[1].fd = connect(stations[0]);
+                connections[1].events = POLLIN;
+
                 session.station = stations[0];
             }
         }
@@ -121,7 +123,8 @@ void ReceiverService::start() {
                 restart(MISSING_PACKAGE, buffer);
                 continue;
             }
-            auto written_data = write(connections[2].fd, readable.second, readable.first);
+            auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
+            fflush(stdout);
             buffer.commit_read(written_data);
         }
 
@@ -213,9 +216,9 @@ ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &ui
 
     this->setup();
 
-    //TODO BAD DESIGN
-    this->uiService.setStations(&stations);
-    this->uiService.setup();
+//    //TODO BAD DESIGN
+//    this->uiService.setStations(&stations);
+//    this->uiService.setup();
 
     this->ui_socket = uiService.get_reg_socket();
 

@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     ServerOptionParser parser;
     auto server_options = parser.parse(argc, argv);
 
-
+//    server_options.packet_size=8;
     StreamingService streamingService(server_options);
     ControlDaemon controlDaemon(server_options);
 

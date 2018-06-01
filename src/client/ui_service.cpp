@@ -25,10 +25,10 @@ void UIService::setup() {
     //TODO EVERYWHERE
     int option = 1;
     if (setsockopt(reg_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
-        syserr("socket option");
+        syserr("socket option in ui client");
     // bind the socket to a concrete address
     if (bind(reg_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-        syserr("bind");
+        syserr("bind in ui client");
 
     if (listen(reg_socket, QUEUE_LENGTH) < 0) syserr("listen");
 }

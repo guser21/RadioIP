@@ -12,9 +12,9 @@ int main(int argc, char *argv[]) {
     ClientOptionsParser parser;
     auto clientOptions = parser.parse(argc, argv);
 
-    DiscoverService discoverService(DISCOVER_ADDR, CTRL_PORT, RTIME);
-    UIService uiService(UI_PORT);
-    clientOptions.buffer_size = 8;
+    DiscoverService discoverService(clientOptions.discover_addr, clientOptions.ctrl_port, clientOptions.rtime);
+    UIService uiService(clientOptions.ui_port);
+//    clientOptions.buffer_size = 8;
     ReceiverService receiverService(discoverService, uiService, clientOptions);
     receiverService.start();
 

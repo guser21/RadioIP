@@ -13,7 +13,7 @@
 struct __attribute__ ((packed)) Packet {
     uint64_t session_id;
     uint64_t first_byte_num;
-    char audio_data[PSIZE];
+    char audio_data[1];
 };
 
 #endif //RADIO_PACKET_DTO_H

@@ -30,6 +30,9 @@ void ControlDaemon::setup() {
     hostaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     hostaddr.sin_port = htons(ctrl_port);
     hostaddr.sin_family = AF_INET;
+    int optval=1;
+    if(setsockopt(ctrl_socket,SOL_SOCKET,SO_REUSEADDR,&optval, sizeof(optval))<0)
+        syserr("setsockopt on control daemon server");
 
     int rtvl = bind(ctrl_socket, (struct sockaddr *) &hostaddr, sizeof(hostaddr));
     if (rtvl < 0) syserr("error in bind ctrl_socket");
