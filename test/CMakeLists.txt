@@ -9,6 +9,6 @@ file(GLOB server_test
 
 link_libraries(gtest gtest_main pthread)
 
-add_executable(clientTest ${client_test} ${client_src} ${common_src} )
-add_executable(serverTest ${server_test})
+add_executable(clientTest ${client_test} ${client_src} ${common_src})
+add_executable(serverTest ${server_test} ${server_src} ${common_src})
 # Link test executable against gtest & gtest_main

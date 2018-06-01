@@ -13,13 +13,20 @@ class StreamingService {
 private:
     int stream_sock;
     boost::circular_buffer<Packet> buffer;
-    int input_fd;
     std::string mcast_address;
     int packet_id = 0;
     uint64_t session_id;
     uint16_t data_port;
     int fifo_size;
     int packet_size;
+
+    int input_fd;
+    int diag_fd;
+public:
+    void setDiag_fd(int diag_fd);
+
+public:
+    void setInput_fd(int input_fd);
 
 public:
     virtual ~StreamingService();
@@ -28,6 +35,8 @@ public:
     void setup();
 
     void start();
+
+
 };
 
 

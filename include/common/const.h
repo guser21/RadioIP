@@ -9,7 +9,7 @@
 #define CTRL_PORT 31501
 #define MCAST_ADDR "224.34.122.2"
 #define DISCOVER_ADDR "255.255.255.255"
-#define PSIZE 5120
+#define PSIZE 512
 #define BSIZE 65536
 #define FSIZE 131072
 #define TTL_VALUE 60

@@ -43,6 +43,7 @@ void StreamingService::setup() {
     if (connect(stream_sock, (struct sockaddr *) &remote_address, sizeof remote_address) < 0)
         syserr("connect");
 
+
 }
 
 void StreamingService::start() {
@@ -64,7 +65,8 @@ void StreamingService::start() {
                 packet->first_byte_num = packet_id * packet_size;
                 //TODO with htons
                 write(stream_sock, reinterpret_cast<char *>(packet), packet_size + 16); //may be worst idea ever
-//                write(STDERR_FILENO, packet->audio_data, packet_size); //may be worst idea ever
+
+//                write(diag_fd, packet->audio_data, packet_size);
 //                fprintf(stderr, "written to socket %s", packet->audio_data);
 //                buffer->push_back(packet);
 
@@ -86,9 +88,18 @@ StreamingService::StreamingService(ServerOptions serverOptions) {
     this->mcast_address = serverOptions.mcast_addr;
 
     this->input_fd = STDIN_FILENO;
+    this->diag_fd = STDOUT_FILENO;
 
     buffer.set_capacity(static_cast<unsigned long>(serverOptions.fifo_size / serverOptions.packet_size));
     session_id = static_cast<uint64_t>(std::time(nullptr));
+}
+
+void StreamingService::setInput_fd(int input_fd) {
+    StreamingService::input_fd = input_fd;
+}
+
+void StreamingService::setDiag_fd(int diag_fd) {
+    StreamingService::diag_fd = diag_fd;
 }
 
 

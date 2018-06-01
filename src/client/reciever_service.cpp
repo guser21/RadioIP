@@ -119,10 +119,10 @@ void ReceiverService::start() {
         if (connections[2].revents & POLLOUT) {
             nfds--;
             auto readable = buffer.read();
-            if (readable.first == 0) {
-                restart(MISSING_PACKAGE, buffer);
-                continue;
-            }
+//            if (readable.first == 0) {
+//                restart(MISSING_PACKAGE, buffer);
+//                continue;
+//            }
             auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
             fflush(stdout);
             buffer.commit_read(written_data);
