@@ -27,7 +27,7 @@ void DiscoverService::setup() {
     bzero(&disc_addr, sizeof(disc_addr));
 
     disc_addr.sin_family = AF_INET;
-    disc_addr.sin_port = htons(ctrl_port);//data_port
+    disc_addr.sin_port = htons(ctrl_port);//ctrl_port
 
     int rtvl = inet_pton(AF_INET, discover_addr.c_str(), &disc_addr.sin_addr);//ip address
     if (rtvl < 0) syserr("inet_pton discover service");
@@ -65,6 +65,8 @@ void DiscoverService::start() {
             written_data = sendto(disc_socket, LOOKUP_MSG,
                                   sizeof(LOOKUP_MSG), 0, (struct sockaddr *) &this->broadcast_addr,
                                   sizeof(this->broadcast_addr));
+            printf("Sending discover request\n");
+            fflush(stdout);
             if (written_data != sizeof(LOOKUP_MSG)) logerr("write to disc socket");
             sleep(rtime);
         }
