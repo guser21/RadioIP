@@ -153,11 +153,11 @@ int ReceiverService::connect(Station cur_station) {
         syserr("inet_aton");
 
     if (setsockopt(stream_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *) &request, sizeof request) < 0)
-        syserr("setsockopt");
+        syserr("setsockopt add membership request receiver service ");
 
     int option = 1;
     if (setsockopt(stream_sock, SOL_SOCKET, SO_REUSEADDR, (void *) &option, sizeof option) < 0)
-        syserr("setsockopt");
+        syserr("setsockopt reuseaddr in receiver service");
 
     bzero(&local_address, sizeof(local_address));
     local_address.sin_family = AF_INET;

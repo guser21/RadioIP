@@ -65,10 +65,9 @@ void DiscoverService::start() {
             written_data = sendto(disc_socket, LOOKUP_MSG,
                                   sizeof(LOOKUP_MSG), 0, (struct sockaddr *) &this->broadcast_addr,
                                   sizeof(this->broadcast_addr));
-            printf("Sending discover request\n");
             fflush(stdout);
             if (written_data != sizeof(LOOKUP_MSG)) logerr("write to disc socket");
-            sleep(rtime);
+            sleep(rtime);//TODO usleep
         }
     }).detach();
 }

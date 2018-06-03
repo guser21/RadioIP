@@ -3,7 +3,7 @@
 //
 
 #include <client/buffer.h>
-
+//TODO endianness  be64toh();htobe64()
 Buffer::Buffer(int size) : size(size) {
     data = new char[size];
     byteId = new __int128[size];
@@ -49,6 +49,7 @@ void Buffer::clean() {
 }
 
 std::pair<int, char *> Buffer::read() {
+    //TODO overwritten byte on current read
     int readable = 1;
 
     if (last_read != -1 && (last_read != byteId[read_index] - 1)) {
