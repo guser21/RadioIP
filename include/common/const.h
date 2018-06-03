@@ -19,6 +19,7 @@
 #define MAX_NAME_SIZE 100
 #define LOOKUP_MSG "ZERO_SEVEN_COME_IN"
 #define REPLY_MSG "BOREWICZ_HERE"
+#define RETRY_MSG "LOUDER_PLEASE"
 #define STATION_NAME "Radio Erewań"//TODO
 #define RTIME 3
 #define RTIME_CLIENT 3

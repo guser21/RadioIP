@@ -16,15 +16,12 @@ class DiscoverService {
 private:
     std::string discover_addr;
     int disc_socket;
-public:
-    DiscoverService(const std::string &discover_addr, uint16_t ctrl_port, unsigned int rtime);
-
-private:
     uint16_t ctrl_port;
     unsigned int rtime;
     sockaddr_in broadcast_addr{};
 public:
     void setup();
+    DiscoverService(const std::string &discover_addr, uint16_t ctrl_port, unsigned int rtime);
 
 
     int get_disc_sock() const;

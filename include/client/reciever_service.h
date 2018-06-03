@@ -8,7 +8,7 @@
 #include <string>
 #include <common/vec_mutex.h>
 #include "station.h"
-#include "msg_parser.h"
+#include "client_parser.h"
 #include "ui_service.h"
 #include "discover_service.h"
 #include "client_options.h"
@@ -36,7 +36,7 @@ class ReceiverService {
 private:
     std::vector<struct pollfd> connections;
     int server_reply_sock;
-    MsgParser msgParser;
+    ClientParser msgParser;
     std::vector<Station> stations;
 
     UIService &uiService;

@@ -10,7 +10,7 @@
 #include <sstream>
 #include <vector>
 #include <client/station.h>
-#include <client/msg_parser.h>
+#include <client/client_parser.h>
 #include <common/const.h>
 
 static std::vector<std::string> split(const std::string &s, char delim) {
@@ -37,7 +37,7 @@ static bool isNumber(const std::string &num) {
     return isnum;
 }
 
-Station MsgParser::parse(std::string msg) {
+Station ClientParser::parse(std::string msg) {
     Station station;
     char *end;
 

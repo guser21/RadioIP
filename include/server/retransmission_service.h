@@ -9,9 +9,14 @@
 
 class RetransmissionService {
 private:
-    VecMutex<int> *vecMutex;
-public:
+    SetMutex<uint64_t > *retr_req;
+    int socket;
+    uint64_t session_id;
+    int rtime;
+    SafeBuffer* safeBuffer;
 
+public:
+    void start();
 
 };
 

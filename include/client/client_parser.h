@@ -7,7 +7,7 @@
 
 #include "station.h"
 
-class MsgParser{
+class ClientParser{
 public:
     Station parse(std::string msg);
 };

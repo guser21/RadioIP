@@ -20,7 +20,7 @@ TEST(DiffTest, INTEGRATION) {
     ServerOptionParser serverOptionParser;
     auto server_options = serverOptionParser.parse(1, (char **) "/");
 
-    StreamingService streamingService(server_options);
+    StreamingService streamingService(server_options, nullptr);
 
     streamingService.setup();
 

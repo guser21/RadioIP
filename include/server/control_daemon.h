@@ -7,6 +7,7 @@
 
 #include <string>
 #include <mutex>
+#include <common/vec_mutex.h>
 #include "common/const.h"
 #include "server_options.h"
 
@@ -21,8 +22,10 @@ private:
 
     void request_handler();
 
+    SetMutex<uint64_t > *retr_req;
+
 public:
-    explicit ControlDaemon(ServerOptions serverOptions);
+    ControlDaemon(ServerOptions serverOptions, SetMutex<uint64_t > *retr_req);
 
     void setup();
 

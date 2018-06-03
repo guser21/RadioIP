@@ -63,12 +63,19 @@ void StreamingService::start() {
             if (packed_chars == packet_size) {
                 packet->session_id = this->session_id;
                 packet->first_byte_num = packet_id * packet_size;
-                //TODO with htons
-                write(stream_sock, reinterpret_cast<char *>(packet), packet_size + 16); //may be worst idea ever
 
-//                write(diag_fd, packet->audio_data, packet_size);
-//                fprintf(stderr, "written to socket %s", packet->audio_data);
-//                buffer->push_back(packet);
+                const char *raw_packet = reinterpret_cast<char *>(packet);
+                std::string current_packet;
+
+                for (int i = 0; i < packet_size + 16; i++) {
+                    current_packet += raw_packet[i];
+                }
+
+
+                //TODO with htons
+                write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
+                buffer->push(packet->first_byte_num, current_packet);
+
 
                 packed_chars = 0;
                 packet_id++;
@@ -78,10 +85,13 @@ void StreamingService::start() {
     free(packet);
 }
 
-StreamingService::~StreamingService() = default;
+StreamingService::~StreamingService() {
+    delete buffer;
+};
 
 
-StreamingService::StreamingService(ServerOptions serverOptions) {
+StreamingService::StreamingService(ServerOptions serverOptions, SetMutex<uint64_t> *retr_requests) : retr_requests(
+        retr_requests) {
     this->packet_size = serverOptions.packet_size;
     this->fifo_size = serverOptions.fifo_size;
     this->data_port = serverOptions.data_port;
@@ -89,9 +99,10 @@ StreamingService::StreamingService(ServerOptions serverOptions) {
 
     this->input_fd = STDIN_FILENO;
     this->diag_fd = STDOUT_FILENO;
-
-    buffer.set_capacity(static_cast<unsigned long>(serverOptions.fifo_size / serverOptions.packet_size));
+    buffer = new SafeBuffer(serverOptions.fifo_size / serverOptions.packet_size, serverOptions.packet_size);
     session_id = static_cast<uint64_t>(std::time(nullptr));
+
+
 }
 
 void StreamingService::setInput_fd(int input_fd) {

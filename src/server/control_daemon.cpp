@@ -12,6 +12,7 @@
 #include <sstream>
 #include <utility>
 #include <thread>
+#include <server/server_parser.h>
 
 void ControlDaemon::start() {
     auto th = std::thread([&] {
@@ -30,8 +31,8 @@ void ControlDaemon::setup() {
     hostaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     hostaddr.sin_port = htons(ctrl_port);
     hostaddr.sin_family = AF_INET;
-    int optval=1;
-    if(setsockopt(ctrl_socket,SOL_SOCKET,SO_REUSEADDR,&optval, sizeof(optval))<0)
+    int optval = 1;
+    if (setsockopt(ctrl_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
         syserr("setsockopt on control daemon server");
 
     int rtvl = bind(ctrl_socket, (struct sockaddr *) &hostaddr, sizeof(hostaddr));
@@ -56,7 +57,7 @@ void ControlDaemon::request_handler() {
     ssize_t read_bytes, snd_len;
     struct sockaddr_in client_addr{};
     socklen_t socklen = sizeof(client_addr);
-
+    ServerParser parser;
     bzero(buffer, sizeof(buffer));
     bzero(&client_addr, sizeof(client_addr));
 
@@ -65,23 +66,32 @@ void ControlDaemon::request_handler() {
                                   (struct sockaddr *) &client_addr, &socklen)) > 0) {
         if (strncmp(buffer, LOOKUP_MSG, read_bytes) == 0) {
             std::string reply = this->station_addr();
-//            printf("writing to client %s\n", reply.c_str());
             snd_len = sendto(ctrl_socket, reply.c_str(), reply.size(), 0,
                              (struct sockaddr *) &client_addr, socklen);
             if (snd_len != reply.size()) logerr("sendto in control daemon request handler ");
-        } else {
-            printf("TODO");
+        }
+
+        if (strncmp(buffer, RETRY_MSG, strlen(RETRY_MSG)) == 0) {
+            std::string list = std::string(buffer + strlen(RETRY_MSG) + 1);
+            auto res = parser.parse_requests(list);
+
+            {
+                std::unique_lock<std::mutex> lock(retr_req->mut);
+                for (auto item: res) {
+                    retr_req->elems.insert(item);
+                }
+            }
         }
         bzero(&client_addr, sizeof(client_addr));
     }
 }
 
 
-ControlDaemon::ControlDaemon(ServerOptions serverOptions) {
-    this->ctrl_port=serverOptions.ctrl_port;
-    this->mcast_addr=serverOptions.mcast_addr;
-    this->data_port=serverOptions.data_port;
-    this->station_name=serverOptions.station_name;
+ControlDaemon::ControlDaemon(ServerOptions serverOptions,SetMutex<uint64_t >* vecMutex): retr_req(vecMutex) {
+    this->ctrl_port = serverOptions.ctrl_port;
+    this->mcast_addr = serverOptions.mcast_addr;
+    this->data_port = serverOptions.data_port;
+    this->station_name = serverOptions.station_name;
 
 }
 
