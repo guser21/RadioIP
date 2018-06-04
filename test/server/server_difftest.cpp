@@ -1,8 +1,7 @@
 //
 // Created by guser on 6/1/18.
 //
-#include <gtest/gtest.h> // googletest header file
-
+#include <gtest/gtest.h>
 #include <string>
 #include <common/const.h>
 #include <server/streaming_service.h>
@@ -14,7 +13,7 @@ TEST(DiffTest, INTEGRATION) {
     int in_fd, out_fd;
     const char *in_path = "./in.txt", *out_path = "./out.txt";
     in_fd = open(in_path, 0);
-    out_fd = open(out_path,O_CREAT | O_WRONLY );
+    out_fd = open(out_path, O_CREAT | O_WRONLY);
 
 
     ServerOptionParser serverOptionParser;

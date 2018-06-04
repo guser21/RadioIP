@@ -72,9 +72,7 @@ void ControlDaemon::request_handler() {
         }
 
         if (strncmp(buffer, RETRY_MSG, strlen(RETRY_MSG)) == 0) {
-            std::string list = std::string(buffer + strlen(RETRY_MSG) + 1);
-            auto res = parser.parse_requests(list);
-
+            auto res = parser.parse_requests(std::string(buffer));
             {
                 std::unique_lock<std::mutex> lock(retr_req->mut);
                 for (auto item: res) {
@@ -87,7 +85,7 @@ void ControlDaemon::request_handler() {
 }
 
 
-ControlDaemon::ControlDaemon(ServerOptions serverOptions,SetMutex<uint64_t >* vecMutex): retr_req(vecMutex) {
+ControlDaemon::ControlDaemon(ServerOptions serverOptions, SetMutex<uint64_t> *vecMutex) : retr_req(vecMutex) {
     this->ctrl_port = serverOptions.ctrl_port;
     this->mcast_addr = serverOptions.mcast_addr;
     this->data_port = serverOptions.data_port;

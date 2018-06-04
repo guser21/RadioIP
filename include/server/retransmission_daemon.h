@@ -5,17 +5,18 @@
 #ifndef RADIO_RETRANSMISSION_SERVICE_H
 #define RADIO_RETRANSMISSION_SERVICE_H
 
-#include <common/vec_mutex.h>
+#include <common/safe_structures.h>
 
-class RetransmissionService {
+class RetransmissionDaemon {
 private:
     SetMutex<uint64_t > *retr_req;
     int socket;
-    uint64_t session_id;
     int rtime;
     SafeBuffer* safeBuffer;
 
 public:
+    RetransmissionDaemon(SetMutex<uint64_t> *retr_req, int socket, int rtime, SafeBuffer *safeBuffer);
+
     void start();
 
 };

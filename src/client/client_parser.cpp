@@ -55,7 +55,7 @@ Station ClientParser::parse(std::string msg) {
     unsigned long name_ind = tokens[0].size() + tokens[1].size() + tokens[2].size() + 2;
 
     station.mcast_addr = tokens[1];
-    station.port = static_cast<uint16_t>(port);
+    station.data_port = static_cast<uint16_t>(port);
     station.name = msg.substr(name_ind + 1);
     station.last_discover = time(nullptr);
 

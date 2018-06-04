@@ -7,7 +7,7 @@
 
 #include <boost/circular_buffer.hpp>
 #include <common/packet_dto.h>
-#include <common/vec_mutex.h>
+#include <common/safe_structures.h>
 #include "server_options.h"
 
 class StreamingService {
@@ -23,8 +23,7 @@ private:
     int input_fd;
     int diag_fd;
 
-    SetMutex<uint64_t> *retr_requests;
-    SafeBuffer* buffer;
+    SafeBuffer *buffer;
 public:
     void setDiag_fd(int diag_fd);
 
@@ -32,12 +31,13 @@ public:
 
     virtual ~StreamingService();
 
-    StreamingService(ServerOptions serverOptions, SetMutex<uint64_t> *retr_requests);
+    StreamingService(ServerOptions serverOptions, SafeBuffer *buffer);
 
     void setup();
 
     void start();
 
+    int get_streaming_socket() { return stream_sock; };
 
 };
 

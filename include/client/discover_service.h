@@ -6,7 +6,7 @@
 #define RADIO_LOOKUP_SERVICE_H
 
 #include <string>
-#include <common/vec_mutex.h>
+#include <common/safe_structures.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "station.h"

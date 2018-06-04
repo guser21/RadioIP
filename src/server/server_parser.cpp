@@ -5,7 +5,9 @@
 #include <vector>
 #include <server/server_parser.h>
 #include <sstream>
+#include <common/const.h>
 
+//TODO take to common file
 static std::vector<std::string> split(const std::string &s, char delim) {
     std::stringstream ss(s);
     std::string item;
@@ -17,22 +19,31 @@ static std::vector<std::string> split(const std::string &s, char delim) {
 }
 
 static bool are_digits(const std::string &num) {
-    bool isnum = true;
+    bool are_dig = true;
     for (auto ch : num) {
-        isnum &= isdigit(ch);
+        are_dig &= isdigit(ch);
     }
-    return isnum;
+    return are_dig;
 }
 
-//TODO TEST
+
 std::vector<uint64_t> ServerParser::parse_requests(std::string str) {
-    std::vector<uint64_t> vec;
+    std::string prefix(RETRY_MSG);
+    prefix += " ";
+    if (str.find(prefix) != 0)
+        return std::vector<uint64_t>();
+
+    str = str.substr(prefix.length());
+
+    std::vector<uint64_t> result;
     auto tokens = split(str, ',');
     for (auto &req:tokens) {
         if (are_digits(req)) {
-            vec.push_back(std::stoll(req));
+            result.push_back(std::stoll(req));
+        } else {
+            return std::vector<uint64_t>();
         }
     }
 
-    return vec;
+    return result;
 }

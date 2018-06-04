@@ -7,7 +7,7 @@
 
 #include <string>
 #include <mutex>
-#include <common/vec_mutex.h>
+#include <common/safe_structures.h>
 #include "common/const.h"
 #include "server_options.h"
 

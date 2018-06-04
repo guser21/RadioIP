@@ -12,7 +12,7 @@ namespace po = boost::program_options;
 ServerOptions ServerOptionParser::parse(int argc, char **argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
-            ("help,h", "Available params")
+            (",h", "Available params")
             (",a", po::value<std::string>()->default_value(MCAST_ADDR), "set multicast ip address")
             (",P", po::value<uint16_t>()->default_value(DATA_PORT), "set data data_port")
             (",C", po::value<uint16_t>()->default_value(CTRL_PORT), "set control data_port")
@@ -28,7 +28,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
 
-        if (vm.count("help")) {
+        if (vm.count("-h")) {
             std::cout << desc << std::endl;
             exit(0);
         }

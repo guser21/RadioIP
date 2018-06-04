@@ -19,7 +19,6 @@ __int128 Buffer::get_lastId() {
     return last_byteId;
 }
 
-//TODO test Non trivial code
 void Buffer::push(const char *buff, int buff_size, int first_byte) {
     uint64_t diff = 0;
 

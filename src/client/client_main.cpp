@@ -5,7 +5,7 @@
 #include <client/reciever_service.h>
 #include <common/const.h>
 #include <client/discover_service.h>
-#include <common/vec_mutex.h>
+#include <common/safe_structures.h>
 #include <client/client_options.h>
 
 int main(int argc, char *argv[]) {
@@ -14,7 +14,9 @@ int main(int argc, char *argv[]) {
 
     DiscoverService discoverService(clientOptions.discover_addr, clientOptions.ctrl_port, clientOptions.rtime);
     UIService uiService(clientOptions.ui_port);
+    
 //    clientOptions.buffer_size = 16;
+
     ReceiverService receiverService(discoverService, uiService, clientOptions);
     receiverService.start();
 

@@ -18,13 +18,7 @@
 #include <client/buffer.h>
 #include <client/reciever_service.h>
 #include <iostream>
-
-
-struct __attribute__((packed)) Packet {
-    uint64_t session_id;
-    uint64_t first_byte_num;
-    char *audio_data;
-};
+#include <common/packet_dto.h>
 
 
 #pragma clang diagnostic push
@@ -84,10 +78,16 @@ void ReceiverService::start() {
         if (connections[0].revents & POLLIN) {
             nfds--;
             bzero(reply_buffer, CTRL_BUFFER_SIZE);
+            //TODO recvfrom
+            sockaddr_in server_address{};
+            auto read_bytes = recvfrom(connections[0].fd, reply_buffer, sizeof(reply_buffer), 0,
+                                       (sockaddr *) &server_address,
+                                       static_cast<socklen_t *>(sizeof(server_address)));
 
-            auto read_bytes = read(connections[0].fd, reply_buffer, sizeof(reply_buffer));
-            if (read_bytes < 0) logerr("read in 0th fd");
-            discover_handler(reply_buffer);
+            if (read_bytes < 0) logerr("read in 0th fd"); //TODO error handling
+
+            discover_handler(reply_buffer, server_address);
+
             //TODO refactor really bad code
             if (connections[1].fd == -1 && !stations.empty()) {
                 //TODO option with -n
@@ -102,14 +102,19 @@ void ReceiverService::start() {
         if (connections[1].revents & POLLIN) {
             nfds--;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
+            ssize_t psize = read_bytes - 16;
             // TODO improve, bad code
             packet = reinterpret_cast<Packet *> (read_buffer);
             // 2 8byte numbers
-            buffer.push(read_buffer + 16, read_bytes - 16, packet->first_byte_num);
+
 
             if (session.byte0 == -1) {
+                session.expect_byte=packet->first_byte_num+psize;
                 session.byte0 = packet->first_byte_num;
+            } else{
+
             }
+            buffer.push(read_buffer + 16, psize, packet->first_byte_num);
 
             if (buffer.get_lastId() > session.byte0 + 3 * (buffer_size / 4)) {
                 connections[2].events = POLLOUT;
@@ -119,10 +124,16 @@ void ReceiverService::start() {
         if (connections[2].revents & POLLOUT) {
             nfds--;
             auto readable = buffer.read();
+            if (readable.first == 0) {
+                connections[2].events = 0;
+
+            }
+
 //            if (readable.first == 0) {
 //                restart(MISSING_PACKAGE, buffer);
 //                continue;
 //            }
+
             auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
             fflush(stdout);
             buffer.commit_read(written_data);
@@ -162,7 +173,7 @@ int ReceiverService::connect(Station cur_station) {
     bzero(&local_address, sizeof(local_address));
     local_address.sin_family = AF_INET;
     local_address.sin_addr.s_addr = htonl(INADDR_ANY);
-    local_address.sin_port = htons(cur_station.port);
+    local_address.sin_port = htons(cur_station.data_port);
 
     //TODO doesn't work ask
 //    connect(stream_sock, (struct sockaddr *) &local_address, sizeof(local_address));
@@ -180,9 +191,12 @@ void ReceiverService::disconnect() {
 }
 
 
-void ReceiverService::discover_handler(const std::string &msg) {
-    auto new_station = msgParser.parse(msg);
+void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
+
+    auto new_station = client_parser.parse(msg);
     if (new_station == InvalidStation) return;
+
+    new_station.address = server_address;
 
     time_t cur_time = time(nullptr);
     bool found = false;
