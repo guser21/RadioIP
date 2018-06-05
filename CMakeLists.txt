@@ -14,6 +14,8 @@ IF (Boost_FOUND)
 ENDIF ()
 
 find_package(Threads)
+SET(GCC_COVERAGE_COMPILE_FLAGS "-g")
+SET(GCC_COVERAGE_LINK_FLAGS    "-lgcov")
 
 
 find_package(Boost COMPONENTS program_options REQUIRED)

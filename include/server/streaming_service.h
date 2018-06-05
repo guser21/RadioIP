@@ -29,8 +29,6 @@ public:
 
     void setInput_fd(int input_fd);
 
-    virtual ~StreamingService();
-
     StreamingService(ServerOptions serverOptions, SafeBuffer *buffer);
 
     void setup();

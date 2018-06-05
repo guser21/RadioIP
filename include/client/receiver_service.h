@@ -13,9 +13,13 @@
 #include "discover_service.h"
 #include "client_options.h"
 #include "buffer.h"
+#include "retransmission_service.h"
 #include <poll.h>
-enum Status{
 
+enum Status {
+    ACTIVE,
+    DOWN,
+    WAITING
 };
 enum Reason {
     DROP_STATION,
@@ -23,15 +27,17 @@ enum Reason {
 };
 
 struct Session {
+    Status current_status = DOWN;
     __int128 byte0 = -1;
     __int128 session_id = -1;
     Station station = InvalidStation;
-    __int128 expect_byte = -1;
+    __int128 last_packet_id = -1;
 
     void clean() {
-        expect_byte = -1;
+        last_packet_id = -1;
         byte0 = -1;
         session_id = -1;
+        current_status = DOWN;
         station = InvalidStation;
     }
 };
@@ -46,12 +52,13 @@ private:
 
     UIService &uiService;
     DiscoverService &discoverService;
+    RetransmissionService &retransmissionService;
     Session session;
     int ui_socket;
     int rtime;
     int buffer_size;
     int data_socket;
-
+    uint16_t ctrl_port;
 
     struct ip_mreq request{};
 
@@ -59,7 +66,7 @@ public:
 
     void start();
 
-    ReceiverService(DiscoverService &discoverService, UIService &uiService, ClientOptions clientOptions);
+    ReceiverService(DiscoverService &discoverService, UIService &uiService,RetransmissionService& retransmissionService, ClientOptions clientOptions);
 
     int connect(Station cur_station);
 
@@ -70,8 +77,6 @@ public:
     void disconnect();
 
     void restart(Reason r, Buffer &buffer);
-
-    void check_timeout();
 
     void check_timeout(Buffer &buffer);
 };

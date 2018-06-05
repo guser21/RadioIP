@@ -66,7 +66,7 @@ void DiscoverService::start() {
                                   sizeof(LOOKUP_MSG), 0, (struct sockaddr *) &this->broadcast_addr,
                                   sizeof(this->broadcast_addr));
             if (written_data != sizeof(LOOKUP_MSG)) logerr("write to disc socket");
-            sleep(rtime);
+            sleep(1);//TODO every 5 seconds?
         }
     }).detach();
 }

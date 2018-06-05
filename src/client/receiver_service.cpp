@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <fcntl.h>
 #include <client/buffer.h>
-#include <client/reciever_service.h>
+#include <client/receiver_service.h>
 #include <iostream>
 #include <common/packet_dto.h>
 
@@ -28,7 +28,6 @@
 void ReceiverService::restart(Reason r, Buffer &buffer) {
     session.clean();
     buffer.clean();
-
     connections[2].events = 0;
     connections[1].fd = -1;
     switch (r) {
@@ -53,7 +52,7 @@ void ReceiverService::check_timeout(Buffer &buffer) {
             auto erased_station = stations[i];
             if (session.station == erased_station) {
                 restart(DROP_STATION, buffer);
-                std::cout << "dropping";
+                std::cerr << "dropping";
                 std::flush(std::cout);
             }
         }
@@ -61,9 +60,7 @@ void ReceiverService::check_timeout(Buffer &buffer) {
 }
 
 //TODO refactor too big function
-//TODO TCP takes too many cycles of cpu
 void ReceiverService::start() {
-
     int nfds;
     char reply_buffer[READ_BUFFER_SIZE];
     auto read_buffer = new char[MAX_UDP_SIZE];
@@ -78,21 +75,28 @@ void ReceiverService::start() {
         if (connections[0].revents & POLLIN) {
             nfds--;
             bzero(reply_buffer, CTRL_BUFFER_SIZE);
-            //TODO recvfrom
-            sockaddr_in server_address{};
-            auto read_bytes = recvfrom(connections[0].fd, reply_buffer, sizeof(reply_buffer), 0,
-                                       (sockaddr *) &server_address,
-                                       static_cast<socklen_t *>(sizeof(server_address)));
 
-            if (read_bytes < 0) logerr("read in 0th fd"); //TODO error handling
+            sockaddr_in server_address{};
+            socklen_t len = sizeof(server_address);
+            auto read_bytes = recvfrom(connections[0].fd, reply_buffer, sizeof(reply_buffer), 0,
+                                       (sockaddr *) &server_address, &len);
+
+            if (read_bytes < 0) {
+                logerr("read in 0th fd"); //TODO error handling
+            }
 
             discover_handler(reply_buffer, server_address);
 
             //TODO refactor really bad code
-            if (connections[1].fd == -1 && !stations.empty()) {
+            if (session.current_status == DOWN && !stations.empty()) {
                 //TODO option with -n
-                connections[1].fd = connect(stations[0]);
+                session.current_status = WAITING;//TODO
+
+                auto conecting_station = stations[0];
+                connections[1].fd = connect(conecting_station);
                 connections[1].events = POLLIN;
+
+                retransmissionService.restart(conecting_station.address);
 
                 session.station = stations[0];
             }
@@ -103,17 +107,24 @@ void ReceiverService::start() {
             nfds--;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
             ssize_t psize = read_bytes - 16;
-            // TODO improve, bad code
+            // TODO Serialize deserialize
             packet = reinterpret_cast<Packet *> (read_buffer);
             // 2 8byte numbers
 
-
-            if (session.byte0 == -1) {
-                session.expect_byte=packet->first_byte_num+psize;
+            if (session.current_status == WAITING) {
+                session.current_status = ACTIVE;
+                session.session_id = packet->session_id;
                 session.byte0 = packet->first_byte_num;
-            } else{
-
+            } else {
+                //TODO which packets should be retransmitted
+                if (packet->first_byte_num > session.last_packet_id + psize) {
+                    retransmissionService.add_request(session.last_packet_id, packet->first_byte_num, psize);
+                }
+                if (packet->first_byte_num < session.last_packet_id) {
+                    retransmissionService.notify(packet->first_byte_num);
+                }
             }
+            session.last_packet_id = packet->first_byte_num;
             buffer.push(read_buffer + 16, psize, packet->first_byte_num);
 
             if (buffer.get_lastId() > session.byte0 + 3 * (buffer_size / 4)) {
@@ -126,7 +137,6 @@ void ReceiverService::start() {
             auto readable = buffer.read();
             if (readable.first == 0) {
                 connections[2].events = 0;
-
             }
 
 //            if (readable.first == 0) {
@@ -146,6 +156,7 @@ void ReceiverService::start() {
             return p;
         });
     }
+    logerr("error in poll");
     delete read_buffer;
 }
 
@@ -196,6 +207,7 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
     auto new_station = client_parser.parse(msg);
     if (new_station == InvalidStation) return;
 
+    server_address.sin_port = htons(ctrl_port);
     new_station.address = server_address;
 
     time_t cur_time = time(nullptr);
@@ -217,11 +229,14 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
 
 }
 
-ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService, ClientOptions clientOptions) :
-        discoverService(discoverService),
+ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService,
+                                 RetransmissionService &retransmissionService,
+                                 ClientOptions clientOptions) :
+        discoverService(discoverService), retransmissionService(retransmissionService),
         uiService(uiService) {
     this->buffer_size = clientOptions.buffer_size;
     this->rtime = clientOptions.rtime;
+    this->ctrl_port = clientOptions.ctrl_port;
 
     this->discoverService.setup();
     this->discoverService.start();
@@ -269,7 +284,7 @@ void ReceiverService::setup() {
     connections.push_back(stdout_fd);
 
     //Setting stdout to non-block
-    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl in setup");
+    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl in setup receiver service");
 
 
     //TODO turn on ui service

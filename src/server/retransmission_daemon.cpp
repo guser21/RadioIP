@@ -7,6 +7,7 @@
 #include <server/retransmission_daemon.h>
 #include <zconf.h>
 #include <thread>
+#include <iostream>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -14,7 +15,7 @@
 void RetransmissionDaemon::start() {
     std::thread([&] {
         while (true) {
-            usleep(rtime);
+            std::this_thread::sleep_for(std::chrono::milliseconds(rtime));
             std::vector<uint64_t> reqs;
             {
                 std::unique_lock<std::mutex> lock(retr_req->mut);
@@ -26,6 +27,7 @@ void RetransmissionDaemon::start() {
                 auto packet = safeBuffer->get(el);
                 if (packet.length() != 0) {
                     write(socket, packet.c_str(), packet.size());
+                    std::cerr << "sending retransmission" << std::endl;
                 }
             }
         }
@@ -33,9 +35,9 @@ void RetransmissionDaemon::start() {
 }
 
 RetransmissionDaemon::RetransmissionDaemon(SetMutex<uint64_t> *retr_req, int socket, int rtime,
-                                             SafeBuffer *safeBuffer) : retr_req(retr_req),
-                                                                       socket(socket),
-                                                                       rtime(rtime),
-                                                                       safeBuffer(safeBuffer) {}
+                                           SafeBuffer *safeBuffer) : retr_req(retr_req),
+                                                                     socket(socket),
+                                                                     rtime(rtime),
+                                                                     safeBuffer(safeBuffer) {}
 
 #pragma clang diagnostic pop

@@ -29,7 +29,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
         po::notify(vm);
 
         if (vm.count("-h")) {
-            std::cout << desc << std::endl;
+            std::cerr << desc << std::endl;
             exit(0);
         }
 
@@ -42,7 +42,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
         serverOptions.station_name = vm["-n"].as<std::string>();
 
     } catch (std::exception &err) {
-        std::cout << err.what() << std::endl;
+        std::cerr << err.what() << std::endl;
         exit(1);
     }
 

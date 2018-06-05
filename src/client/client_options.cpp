@@ -26,8 +26,8 @@ ClientOptions ClientOptionsParser::parse(int argc, char **argv) {
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
 
-        if (vm.count("help")) {
-            std::cout << desc << std::endl;
+        if (vm.count("-h")) {
+            std::cerr << desc << std::endl;
             exit(0);
         }
         //TODO option -n
@@ -35,8 +35,8 @@ ClientOptions ClientOptionsParser::parse(int argc, char **argv) {
         clientOptions.discover_addr = vm["-d"].as<std::string>();
         clientOptions.ctrl_port = vm["-C"].as<uint16_t>();
         clientOptions.ui_port = vm["-U"].as<uint16_t>();
-        clientOptions.buffer_size = vm["-B"].as<int>();
-        clientOptions.rtime = vm["-R"].as<int>();
+        clientOptions.buffer_size = vm["-B"].as< int>();
+        clientOptions.rtime = vm["-R"].as< int>();
     } catch (std::exception &err) {
         std::cerr << err.what() << std::endl;
         exit(1);

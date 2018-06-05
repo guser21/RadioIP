@@ -11,8 +11,8 @@ struct ClientOptions {
     std::string discover_addr;
     uint16_t ctrl_port;
     uint16_t ui_port;
-    int buffer_size;
-    int rtime;
+    unsigned int buffer_size;
+    unsigned int rtime;
     std::string prefer_station;
 };
 

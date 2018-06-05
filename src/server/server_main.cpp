@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     SafeBuffer buffer(server_options.fifo_size / server_options.packet_size, server_options.packet_size);
     SetMutex<uint64_t> retr_requests;
 
-//    server_options.packet_size=8;
+    server_options.packet_size=8;
     StreamingService streamingService(server_options, &buffer);
     ControlDaemon controlDaemon(server_options, &retr_requests);
 

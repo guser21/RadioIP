@@ -6,17 +6,36 @@
 #define RADIO_RETRANSMISSION_SERVICE_H
 
 #include <common/safe_structures.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <common/err.h>
+#include <thread>
+#include <zconf.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <atomic>
+
 
 class RetransmissionService {
 private:
+
     std::mutex mutex;
     std::condition_variable cond;
-    std::set<std::pair<uint64_t, std::vector<uint64_t,std::less(uint64_t) >>> retransmissionQueue();
-
+    std::atomic<bool> is_restarted= false;
+    std::map<uint64_t, std::vector<uint64_t>> retransmissionQueue;
+    struct sockaddr_in server_addr{};
+    int retr_socket;
+    uint64_t rtime;
 public:
-    void add_request(std::vector<uint64_t> requests);
+    RetransmissionService(uint64_t rtime);
+
+    void add_request(uint64_t from,uint64_t to,int psize);
 
     void notify(uint64_t id);
+
+    void set_server_addr(struct sockaddr_in server_addr);
+
+    void restart(struct sockaddr_in server_addr);
 
     void start();
 };

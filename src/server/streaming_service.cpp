@@ -49,8 +49,9 @@ void StreamingService::setup() {
 void StreamingService::start() {
 
     char read_buffer[packet_size];
-    Packet *packet = static_cast<Packet *>(malloc(sizeof(Packet) + packet_size + 1));
+    char *pack_mem = new char[sizeof(Packet) + packet_size + 1];
 
+    auto packet = reinterpret_cast<Packet *> (pack_mem);
     ssize_t read_chars, packed_chars = 0;
 
     bzero(read_buffer, sizeof(read_buffer));
@@ -73,21 +74,17 @@ void StreamingService::start() {
                 //TODO with htons
                 write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
                 buffer->push(packet->first_byte_num, current_packet);
-                
+
                 packed_chars = 0;
                 packet_id++;
             }
         }
     }
-    free(packet);
+    delete pack_mem;
 }
 
-StreamingService::~StreamingService() {
-    delete buffer;
-};
 
-
-StreamingService::StreamingService(ServerOptions serverOptions, SafeBuffer* safeBuffer) : buffer(safeBuffer) {
+StreamingService::StreamingService(ServerOptions serverOptions, SafeBuffer *safeBuffer) : buffer(safeBuffer) {
     this->packet_size = serverOptions.packet_size;
     this->fifo_size = serverOptions.fifo_size;
     this->data_port = serverOptions.data_port;
@@ -95,9 +92,9 @@ StreamingService::StreamingService(ServerOptions serverOptions, SafeBuffer* safe
 
     this->input_fd = STDIN_FILENO;
     this->diag_fd = STDOUT_FILENO;
-    
+
     session_id = static_cast<uint64_t>(std::time(nullptr));
-    
+
 }
 
 void StreamingService::setInput_fd(int input_fd) {
