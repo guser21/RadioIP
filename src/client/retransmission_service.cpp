@@ -51,13 +51,13 @@ void RetransmissionService::notify(uint64_t id) {
 }
 
 static std::string serialize_to_msg(std::vector<uint64_t> &pack_ids) {
-    std::string msg(REPLY_MSG);
+    std::string msg(RETRY_MSG);
     msg += " ";
     for (int i = 0; i < pack_ids.size() - 1; ++i) {
-        msg += pack_ids[i];
+        msg += std::to_string(pack_ids[i]);
         msg += ",";
     }
-    msg += pack_ids[pack_ids.size() - 1];
+    msg += std::to_string(pack_ids[pack_ids.size() - 1]);
     return msg;
 }
 
@@ -97,7 +97,7 @@ void RetransmissionService::start() {
                     auto sent_data = sendto(retr_socket, msg.c_str(), msg.size(), 0,
                                             reinterpret_cast<const sockaddr *>(&server_addr),
                                             sizeof(server_addr));
-                    std::cerr<<"sending request"<<msg<<std::endl;
+                    std::cerr << "sending request" << msg << std::endl;
                     if (sent_data < 0) logerr("couldn't send retransmission");
 
                     uint64_t next_update = millis_now + rtime;

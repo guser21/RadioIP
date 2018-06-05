@@ -53,7 +53,7 @@ void ReceiverService::check_timeout(Buffer &buffer) {
             if (session.station == erased_station) {
                 restart(DROP_STATION, buffer);
                 std::cerr << "dropping";
-                std::flush(std::cout);
+                std::flush(std::cerr);
             }
         }
     }

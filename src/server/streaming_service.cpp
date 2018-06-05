@@ -55,6 +55,7 @@ void StreamingService::start() {
     ssize_t read_chars, packed_chars = 0;
 
     bzero(read_buffer, sizeof(read_buffer));
+    int skip=0;
 
     while ((read_chars = read(input_fd, read_buffer, sizeof(read_buffer))) > 0) {
 
@@ -71,8 +72,12 @@ void StreamingService::start() {
                 for (int i = 0; i < packet_size + 16; i++) {
                     current_packet += raw_packet[i];
                 }
+
+                skip++;
                 //TODO with htons
-                write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
+                if(skip%2==0){
+                    write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
+                }
                 buffer->push(packet->first_byte_num, current_packet);
 
                 packed_chars = 0;
