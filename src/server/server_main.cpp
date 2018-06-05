@@ -6,15 +6,21 @@
 #include <common/safe_structures.h>
 #include <server/retransmission_daemon.h>
 
-int main(int argc, char *argv[]) {
-    ServerOptionParser parser;
+#include <boost/log/expressions.hpp>
 
+
+#include <boost/log/trivial.hpp>
+
+
+
+int main(int argc, char *argv[]) {
+
+    ServerOptionParser parser;
     auto server_options = parser.parse(argc, argv);
 
     SafeBuffer buffer(server_options.fifo_size / server_options.packet_size, server_options.packet_size);
     SetMutex<uint64_t> retr_requests;
 
-    server_options.packet_size=8;
     StreamingService streamingService(server_options, &buffer);
     ControlDaemon controlDaemon(server_options, &retr_requests);
 
@@ -22,8 +28,8 @@ int main(int argc, char *argv[]) {
     streamingService.setup();
 
     RetransmissionDaemon retransmission(&retr_requests,
-                                                streamingService.get_streaming_socket(),
-                                                server_options.rtime, &buffer);
+                                        streamingService.get_streaming_socket(),
+                                        server_options.rtime, &buffer);
 
     retransmission.start();
     controlDaemon.start();

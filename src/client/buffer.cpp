@@ -15,10 +15,6 @@ Buffer::~Buffer() {
     delete byteId;
 }
 
-__int128 Buffer::get_lastId() {
-    return last_byteId;
-}
-
 void Buffer::push(const char *buff, int buff_size, int first_byte) {
     uint64_t diff = 0;
 
@@ -35,7 +31,6 @@ void Buffer::push(const char *buff, int buff_size, int first_byte) {
         data[index] = buff[i];
         byteId[index] = first_byte + i;
     }
-    last_byteId = first_byte + buff_size - 1;
 }
 
 void Buffer::clean() {

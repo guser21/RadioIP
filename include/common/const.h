@@ -22,7 +22,7 @@
 #define RETRY_MSG "LOUDER_PLEASE"
 #define STATION_NAME "Radio Erewań"//TODO
 #define RTIME 3
-#define RTIME_CLIENT 3
+#define RTIME_CLIENT 250
 #define RTIME_SERVER 250
 #define MAX_PORT 65535
 #define UI_PORT 11501

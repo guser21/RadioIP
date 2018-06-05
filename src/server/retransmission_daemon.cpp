@@ -20,14 +20,14 @@ void RetransmissionDaemon::start() {
             {
                 std::unique_lock<std::mutex> lock(retr_req->mut);
                 reqs.reserve(retr_req->elems.size());
-                std::copy(retr_req->elems.begin(), retr_req->elems.end(), reqs.begin());
+                std::copy(retr_req->elems.begin(), retr_req->elems.end(), std::back_inserter(reqs));
                 retr_req->elems.clear();
             }
             for (auto el:reqs) {
                 auto packet = safeBuffer->get(el);
                 if (packet.length() != 0) {
                     write(socket, packet.c_str(), packet.size());
-                    std::cerr << "sending retransmission" << std::endl;
+                    std::cerr<< "sending retransmission " << el<<std::endl;
                 }
             }
         }

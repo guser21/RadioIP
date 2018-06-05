@@ -61,6 +61,12 @@ static std::string serialize_to_msg(std::vector<uint64_t> &pack_ids) {
     return msg;
 }
 
+static uint64_t get_now_mill() {
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    auto millis_now = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+    return millis_now;
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
@@ -80,16 +86,15 @@ void RetransmissionService::start() {
             cond.wait_until(lock, until,
                             [&]() { return is_restarted || !retransmissionQueue.empty(); });
 
+
             if (is_restarted) {
                 is_restarted = false;
                 next_read = stall;
             } else {
-                auto now = std::chrono::system_clock::now().time_since_epoch();
-                auto millis_now = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-
+                auto millis_now = get_now_mill();
                 auto smallest = retransmissionQueue.begin();
                 //TODO test
-                while (smallest->first <= millis_now) {
+                while (!retransmissionQueue.empty() && smallest->first <= millis_now) {
                     auto msg = serialize_to_msg(smallest->second);
                     //TODO may block
                     //TODO semantics of non blocking udp socket
@@ -97,10 +102,10 @@ void RetransmissionService::start() {
                     auto sent_data = sendto(retr_socket, msg.c_str(), msg.size(), 0,
                                             reinterpret_cast<const sockaddr *>(&server_addr),
                                             sizeof(server_addr));
-                    std::cerr << "sending request" << msg << std::endl;
+                    std::cerr << "sending request " << msg << std::endl;
                     if (sent_data < 0) logerr("couldn't send retransmission");
 
-                    uint64_t next_update = millis_now + rtime;
+                    uint64_t next_update = get_now_mill() + rtime;
                     retransmissionQueue[next_update] = smallest->second;
 
                     retransmissionQueue.erase(smallest);
@@ -108,7 +113,6 @@ void RetransmissionService::start() {
                 }
                 next_read = retransmissionQueue.begin()->first;
             }
-
         }
     }).detach();
 }

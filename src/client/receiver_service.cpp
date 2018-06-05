@@ -1,7 +1,7 @@
 //
 // Created by guser on 5/24/18.
 //
-
+#include <algorithm>
 #include <cstdio>
 #include <zconf.h>
 #include <sys/socket.h>
@@ -25,18 +25,25 @@
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
 //TODO BAD CODE
-void ReceiverService::restart(Reason r, Buffer &buffer) {
+void ReceiverService::restart(Strategy r, Buffer &buffer) {
     session.clean();
     buffer.clean();
+
     connections[2].events = 0;
-    connections[1].fd = -1;
+    session.current_status = DOWN;
+
     switch (r) {
-        case DROP_STATION:
+        case CONNECT_FIRST:
             if (!stations.empty()) {
+                close(connections[1].fd);
                 connections[1].fd = connect(stations[0]);
+                connections[1].events = POLLIN;
                 session.station = stations[0];
+                session.current_status = WAITING_FIRST_PACKET;
+                retransmissionService.restart(session.station.address);
             }
-        case MISSING_PACKAGE:
+            return;
+        case CLEAN_BUFFERS:
             return;
         default:
             return;
@@ -45,15 +52,16 @@ void ReceiverService::restart(Reason r, Buffer &buffer) {
 }
 
 void ReceiverService::check_timeout(Buffer &buffer) {
-    auto cur_time = time(nullptr);
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    auto cur_time = std::chrono::duration_cast<std::chrono::seconds>(now).count();
+
     for (int i = 0; i < stations.size(); ++i) {
         if ((cur_time - stations[i].last_discover) > DROP_TIMEOUT) {
             stations.erase(stations.begin() + i);
             auto erased_station = stations[i];
             if (session.station == erased_station) {
-                restart(DROP_STATION, buffer);
-                std::cerr << "dropping";
-                std::flush(std::cerr);
+                restart(CONNECT_FIRST, buffer);
+                std::cerr << "dropping" << std::endl;
             }
         }
     }
@@ -69,84 +77,87 @@ void ReceiverService::start() {
 
     //it is guaranteed that vector allocates continuous memory blocks
     while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
-        if (nfds < 0) perror("error in poll");
-        check_timeout(buffer);
+        if (nfds < 0) syserr("error in poll");
+//        check_timeout(buffer); //TODO test
+
         //0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
-            nfds--;
+            std::cerr<<"0 desc"<<std::endl;
             bzero(reply_buffer, CTRL_BUFFER_SIZE);
-
             sockaddr_in server_address{};
             socklen_t len = sizeof(server_address);
             auto read_bytes = recvfrom(connections[0].fd, reply_buffer, sizeof(reply_buffer), 0,
                                        (sockaddr *) &server_address, &len);
-
             if (read_bytes < 0) {
-                logerr("read in 0th fd"); //TODO error handling
+                logerr("read in 0th fd poll");
+                restart(CONNECT_FIRST, buffer);
             }
 
             discover_handler(reply_buffer, server_address);
 
-            //TODO refactor really bad code
             if (session.current_status == DOWN && !stations.empty()) {
-                //TODO option with -n
-                session.current_status = WAITING;//TODO
-
-                auto conecting_station = stations[0];
-                connections[1].fd = connect(conecting_station);
-                connections[1].events = POLLIN;
-
-                retransmissionService.restart(conecting_station.address);
-
-                session.station = stations[0];
+                //TODO with option -n
+                restart(CONNECT_FIRST, buffer);
             }
         }
 
         //current server
         if (connections[1].revents & POLLIN) {
-            nfds--;
+            std::cerr<<1 <<" desc"<<std::endl;
+
+//            std::cerr << "read from cur server" << std::endl;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
             ssize_t psize = read_bytes - 16;
             // TODO Serialize deserialize
             packet = reinterpret_cast<Packet *> (read_buffer);
             // 2 8byte numbers
 
-            if (session.current_status == WAITING) {
+            if (session.current_status == WAITING_FIRST_PACKET) {
                 session.current_status = ACTIVE;
+
                 session.session_id = packet->session_id;
                 session.byte0 = packet->first_byte_num;
-            } else {
+                session.max_packet_id = packet->first_byte_num;
+            }
+
+            if (session.current_status == ACTIVE) {
                 //TODO which packets should be retransmitted
-                if (packet->first_byte_num > session.last_packet_id + psize) {
-                    retransmissionService.add_request(session.last_packet_id, packet->first_byte_num, psize);
+                if (packet->first_byte_num > session.max_packet_id + psize) {
+                    retransmissionService.add_request(session.max_packet_id + psize, packet->first_byte_num, psize);
                 }
-                if (packet->first_byte_num < session.last_packet_id) {
+                if (packet->first_byte_num < session.max_packet_id) {
                     retransmissionService.notify(packet->first_byte_num);
                 }
             }
-            session.last_packet_id = packet->first_byte_num;
-            buffer.push(read_buffer + 16, psize, packet->first_byte_num);
 
-            if (buffer.get_lastId() > session.byte0 + 3 * (buffer_size / 4)) {
-                connections[2].events = POLLOUT;
+            if (packet->first_byte_num >= session.byte0 && packet->session_id == session.session_id) {
+                session.max_packet_id = std::max(packet->first_byte_num, session.max_packet_id);
+                buffer.push(packet->audio_data, psize, packet->first_byte_num);
+
+                if (session.max_packet_id > session.byte0 + 3 * (buffer_size / 4)) {
+                    connections[2].events = POLLOUT;
+                }
             }
         }
         //STDOUT
         if (connections[2].revents & POLLOUT) {
-            nfds--;
+            std::cerr<<"2 desc"<<std::endl;
+
             auto readable = buffer.read();
+
+
             if (readable.first == 0) {
-                connections[2].events = 0;
-            }
+                restart(CONNECT_FIRST, buffer);
+            } else {
+                auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
+                fflush(stdout);
+                buffer.commit_read(written_data);
+            };
 
-//            if (readable.first == 0) {
-//                restart(MISSING_PACKAGE, buffer);
-//                continue;
-//            }
 
-            auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
-            fflush(stdout);
-            buffer.commit_read(written_data);
+//            auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
+//            fflush(stdout);
+//            buffer.commit_read(written_data);
         }
 
         //TODO ui ports
@@ -186,8 +197,6 @@ int ReceiverService::connect(Station cur_station) {
     local_address.sin_addr.s_addr = htonl(INADDR_ANY);
     local_address.sin_port = htons(cur_station.data_port);
 
-    //TODO doesn't work ask
-//    connect(stream_sock, (struct sockaddr *) &local_address, sizeof(local_address));
     if (bind(stream_sock, (struct sockaddr *) &local_address, sizeof local_address) < 0)
         syserr("bind");
 
@@ -232,7 +241,9 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
 ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService,
                                  RetransmissionService &retransmissionService,
                                  ClientOptions clientOptions) :
-        discoverService(discoverService), retransmissionService(retransmissionService),
+        discoverService(discoverService),    //TODO turn on ui service
+
+        retransmissionService(retransmissionService),
         uiService(uiService) {
     this->buffer_size = clientOptions.buffer_size;
     this->rtime = clientOptions.rtime;
@@ -244,11 +255,6 @@ ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &ui
     this->server_reply_sock = discoverService.get_disc_sock();
 
     this->setup();
-
-//    //TODO BAD DESIGN
-//    this->uiService.setStations(&stations);
-//    this->uiService.setup();
-
     this->ui_socket = uiService.get_reg_socket();
 
 }

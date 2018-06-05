@@ -10,6 +10,7 @@
 #include <strings.h>
 #include <arpa/inet.h>
 #include <ctime>
+#include <iostream>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -73,11 +74,12 @@ void StreamingService::start() {
                     current_packet += raw_packet[i];
                 }
 
-                skip++;
                 //TODO with htons
-                if(skip%2==0){
+//                if(skip%2==0){
                     write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
-                }
+                    std::cerr<<"written to socket "<<packet->first_byte_num<<std::endl;
+//                }
+                skip++;
                 buffer->push(packet->first_byte_num, current_packet);
 
                 packed_chars = 0;

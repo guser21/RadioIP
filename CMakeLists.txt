@@ -17,12 +17,13 @@ find_package(Threads)
 SET(GCC_COVERAGE_COMPILE_FLAGS "-g")
 SET(GCC_COVERAGE_LINK_FLAGS    "-lgcov")
 
-
-find_package(Boost COMPONENTS program_options REQUIRED)
+find_package(Boost COMPONENTS program_options log REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIR})
 
 link_libraries(${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+
+ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 file(GLOB common_src
         "src/common/*.h"

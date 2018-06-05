@@ -13,6 +13,7 @@
 #include <utility>
 #include <thread>
 #include <server/server_parser.h>
+#include <iostream>
 
 void ControlDaemon::start() {
     auto th = std::thread([&] {
@@ -79,8 +80,11 @@ void ControlDaemon::request_handler() {
                     retr_req->elems.insert(item);
                 }
             }
+            std::cerr << "received request " << buffer << std::endl;
         }
+
         bzero(&client_addr, sizeof(client_addr));
+        bzero(buffer, sizeof(buffer));
     }
 }
 

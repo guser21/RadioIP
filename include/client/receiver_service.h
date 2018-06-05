@@ -19,24 +19,24 @@
 enum Status {
     ACTIVE,
     DOWN,
-    WAITING
+    WAITING_FIRST_PACKET
 };
-enum Reason {
-    DROP_STATION,
-    MISSING_PACKAGE
+enum Strategy {
+    CONNECT_FIRST,
+    CLEAN_BUFFERS
 };
 
 struct Session {
     Status current_status = DOWN;
-    __int128 byte0 = -1;
-    __int128 session_id = -1;
+    uint64_t byte0 = 0;
+    uint64_t session_id = 0;
     Station station = InvalidStation;
-    __int128 last_packet_id = -1;
+    uint64_t max_packet_id = 0;
 
     void clean() {
-        last_packet_id = -1;
-        byte0 = -1;
-        session_id = -1;
+        max_packet_id = 0;
+        byte0 = 0;
+        session_id = 0;
         current_status = DOWN;
         station = InvalidStation;
     }
@@ -76,7 +76,7 @@ public:
 
     void disconnect();
 
-    void restart(Reason r, Buffer &buffer);
+    void restart(Strategy r, Buffer &buffer);
 
     void check_timeout(Buffer &buffer);
 };
