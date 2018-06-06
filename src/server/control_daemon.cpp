@@ -69,6 +69,7 @@ void ControlDaemon::request_handler() {
             std::string reply = this->station_addr();
             snd_len = sendto(ctrl_socket, reply.c_str(), reply.size(), 0,
                              (struct sockaddr *) &client_addr, socklen);
+            std::cerr<<reply<<" discover reply"<<std::endl;
             if (snd_len != reply.size()) logerr("sendto in control daemon request handler ");
         }
 

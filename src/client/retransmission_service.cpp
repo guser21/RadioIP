@@ -79,8 +79,6 @@ void RetransmissionService::start() {
 
         while (true) {
             std::unique_lock<std::mutex> lock(mutex);
-
-            //TODO wait indefinitely if queue is empty no timeout
             auto until = TimePoint<Ms>(Ms(next_read));
 
             cond.wait_until(lock, until,
@@ -134,10 +132,17 @@ void RetransmissionService::restart(struct sockaddr_in addr) {
 
 RetransmissionService::RetransmissionService(uint64_t rtime) : rtime(rtime) {
     retr_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (retr_socket < 0) logerr("error in retransmission service socket");
 
-//    if (fcntl(retr_socket, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl in setup receiver service");
-    //TODO ask for better solution
+
+    //not the best solution but ensures responsiveness
+    timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 500 * 1000;
+    if (setsockopt(retr_socket, SOL_SOCKET, SO_SNDTIMEO, (void *) &timeout, sizeof(timeout)) < 0)
+        syserr("setsockopt failed");
+
+
+    if (retr_socket < 0) logerr("error in retransmission service socket");
     start();
 }
 

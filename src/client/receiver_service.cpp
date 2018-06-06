@@ -24,7 +24,6 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
-//TODO BAD CODE
 void ReceiverService::restart(Strategy r, Buffer &buffer) {
     session.clean();
     buffer.clean();
@@ -35,7 +34,7 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
     switch (r) {
         case CONNECT_FIRST:
             if (!stations.empty()) {
-                disconnect();
+                if (connections[1].fd != -1) disconnect();
                 connections[1].fd = connect(stations[0]);
                 connections[1].events = POLLIN;
                 session.station = stations[0];
@@ -44,7 +43,7 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
             }
             return;
         case RECONNECT:
-            disconnect();
+            if (connections[1].fd != -1) disconnect();
             connections[1].fd = connect(session.station);
             connections[1].events = POLLIN;
             session.current_status = WAITING_FIRST_PACKET;
@@ -86,11 +85,11 @@ void ReceiverService::start() {
 
         //0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
-            std::cerr<<"0 desc"<<std::endl;
-            bzero(read_buffer, CTRL_BUFFER_SIZE);
+            std::cerr << "0 desc" << std::endl;
+            bzero(read_buffer, MAX_UDP_SIZE);
             sockaddr_in server_address{};
             socklen_t len = sizeof(server_address);
-            auto read_bytes = recvfrom(connections[0].fd, read_buffer, sizeof(read_buffer), 0,
+            auto read_bytes = recvfrom(connections[0].fd, read_buffer, MAX_UDP_SIZE, 0,
                                        (sockaddr *) &server_address, &len);
             if (read_bytes < 0) {
                 logerr("read in 0th fd poll");
@@ -107,7 +106,7 @@ void ReceiverService::start() {
 
         //current server
         if (connections[1].revents & POLLIN) {
-            std::cerr<<1 <<" desc"<<std::endl;
+            std::cerr << 1 << " desc" << std::endl;
             bzero(read_buffer, sizeof(read_buffer));
 //            std::cerr << "read from cur server" << std::endl;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
@@ -142,19 +141,19 @@ void ReceiverService::start() {
                     connections[2].events = POLLOUT;
                 }
             }
-            if(packet->session_id> session.session_id){
-                restart(CONNECT_FIRST,buffer);
+            if (packet->session_id > session.session_id) {
+                restart(CONNECT_FIRST, buffer);
             }
         }
         //STDOUT
         if (connections[2].revents & POLLOUT) {
-            std::cerr<<"2 desc"<<std::endl;
+            std::cerr << "2 desc" << std::endl;
 
             auto readable = buffer.read();
 
             if (readable.first == 0) {
                 restart(CONNECT_FIRST, buffer);
-                std::cerr<<"connection restarted"<<std::endl;
+                std::cerr << "connection restarted" << std::endl;
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
                 fflush(stdout);
@@ -169,6 +168,8 @@ void ReceiverService::start() {
             return p;
         });
     }
+
+
     logerr("error in poll");
     delete read_buffer;
 }
