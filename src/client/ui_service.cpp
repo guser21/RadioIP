@@ -32,7 +32,7 @@ void UIService::setup() {
     if (listen(reg_socket, QUEUE_LENGTH) < 0) syserr("listen");
 }
 
-int UIService::get_reg_socket() const {
+int UIService::get_reg_socket() {
     return reg_socket;
 }
 
@@ -44,6 +44,25 @@ UIService::UIService(uint16_t ui_port) {
 
 }
 
-void UIService::setStations(const std::vector<Station> *stations) {
-    UIService::stations = stations;
+void UIService::update_view(std::vector<Station> &stations, Station &current_station) {
+    view.clear();
+
+    view += LINE;
+    view += "\n\r";
+
+    view += CLIENT_NAME;
+    view += "\n\r";
+
+    view += LINE;
+    view += "\n\r";
+    for (auto &station: stations) {
+        if(station==current_station){
+            view+="  > ";
+        } else{
+            view+="    ";
+        }
+        view+=station.name;
+    }
+
 }
+

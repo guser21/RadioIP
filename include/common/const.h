@@ -34,6 +34,7 @@ const char DOWN_KEY[] = {27, 91, 66};
 const char ENTER[] = {13};
 const char CLEAR[] = {0x1B, 'c', '\0'};
 const char LINEMODE[] = "\377\375\042\377\373\001";
-
+#define LINE "------------------------------------------------------------------------"
+#define CLIENT_NAME "  SIK Radio"
 
 #endif //RADIO_CONST_H

@@ -40,6 +40,8 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
                 session.station = stations[0];
                 session.current_status = WAITING_FIRST_PACKET;
                 retransmissionService.restart(session.station.address);
+            } else{
+                session.current_status = DOWN;
             }
             return;
         case RECONNECT:
@@ -61,8 +63,8 @@ void ReceiverService::check_timeout(Buffer &buffer) {
 
     for (int i = 0; i < stations.size(); ++i) {
         if ((cur_time - stations[i].last_discover) > DROP_TIMEOUT) {
-            stations.erase(stations.begin() + i);
             auto erased_station = stations[i];
+            stations.erase(stations.begin() + i);
             if (session.station == erased_station) {
                 restart(CONNECT_FIRST, buffer);
                 std::cerr << "dropping" << std::endl;
@@ -79,13 +81,12 @@ void ReceiverService::start() {
     Buffer buffer(buffer_size);//TODO smth with this
 
     //it is guaranteed that vector allocates continuous memory blocks
-    while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
+    while ((nfds = poll(&connections[0], connections.size(), 500)) >= 0) {
         if (nfds < 0) syserr("error in poll");
         check_timeout(buffer);
 
         //0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
-            std::cerr << "0 desc" << std::endl;
             bzero(read_buffer, MAX_UDP_SIZE);
             sockaddr_in server_address{};
             socklen_t len = sizeof(server_address);
@@ -106,7 +107,6 @@ void ReceiverService::start() {
 
         //current server
         if (connections[1].revents & POLLIN) {
-            std::cerr << 1 << " desc" << std::endl;
             bzero(read_buffer, sizeof(read_buffer));
 //            std::cerr << "read from cur server" << std::endl;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
@@ -147,7 +147,6 @@ void ReceiverService::start() {
         }
         //STDOUT
         if (connections[2].revents & POLLOUT) {
-            std::cerr << "2 desc" << std::endl;
 
             auto readable = buffer.read();
 
@@ -168,8 +167,6 @@ void ReceiverService::start() {
             return p;
         });
     }
-
-
     logerr("error in poll");
     delete read_buffer;
 }
@@ -222,7 +219,8 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
     server_address.sin_port = htons(ctrl_port);
     new_station.address = server_address;
 
-    time_t cur_time = time(nullptr);
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    auto cur_time = std::chrono::duration_cast<std::chrono::seconds>(now).count();
     bool found = false;
 
     for (auto &station : stations) {

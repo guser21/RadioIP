@@ -10,7 +10,7 @@
 /**
  * character and byte index
  * */
-//TODO unit test
+//TODO get rid of __int128
 class Buffer {
 private:
     int size;
