@@ -75,7 +75,7 @@ void StreamingService::start() {
                 }
 
                 //TODO with htons
-//                if(skip%2==0){
+//                if( !(skip%100==0)){
                     write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
                     std::cerr<<"written to socket "<<packet->first_byte_num<<std::endl;
 //                }
