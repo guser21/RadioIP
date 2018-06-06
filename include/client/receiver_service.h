@@ -23,7 +23,7 @@ enum Status {
 };
 enum Strategy {
     CONNECT_FIRST,
-    CLEAN_BUFFERS
+    RECONNECT
 };
 
 struct Session {

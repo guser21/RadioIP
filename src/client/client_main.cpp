@@ -15,10 +15,9 @@ int main(int argc, char *argv[]) {
 
     DiscoverService discoverService(clientOptions.discover_addr, clientOptions.ctrl_port, clientOptions.rtime);
     UIService uiService(clientOptions.ui_port);
-    RetransmissionService retransmissionService(1000);
-//    clientOptions.buffer_size = 48;
+    RetransmissionService retransmissionService(clientOptions.rtime);
 
-    ReceiverService receiverService(discoverService, uiService,retransmissionService, clientOptions);
+    ReceiverService receiverService(discoverService, uiService, retransmissionService, clientOptions);
     receiverService.start();
 
     return 0;

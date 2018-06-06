@@ -22,7 +22,6 @@ void UIService::setup() {
     server_address.sin_addr.s_addr = htonl(INADDR_ANY);
     server_address.sin_port = htons(ui_port);
 
-    //TODO EVERYWHERE
     int option = 1;
     if (setsockopt(reg_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
         syserr("socket option in ui client");

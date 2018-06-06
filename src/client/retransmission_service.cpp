@@ -137,7 +137,6 @@ RetransmissionService::RetransmissionService(uint64_t rtime) : rtime(rtime) {
     if (retr_socket < 0) logerr("error in retransmission service socket");
 
 //    if (fcntl(retr_socket, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl in setup receiver service");
-
     //TODO ask for better solution
     start();
 }

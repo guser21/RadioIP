@@ -35,7 +35,7 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
     switch (r) {
         case CONNECT_FIRST:
             if (!stations.empty()) {
-                close(connections[1].fd);
+                disconnect();
                 connections[1].fd = connect(stations[0]);
                 connections[1].events = POLLIN;
                 session.station = stations[0];
@@ -43,7 +43,12 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
                 retransmissionService.restart(session.station.address);
             }
             return;
-        case CLEAN_BUFFERS:
+        case RECONNECT:
+            disconnect();
+            connections[1].fd = connect(session.station);
+            connections[1].events = POLLIN;
+            session.current_status = WAITING_FIRST_PACKET;
+            retransmissionService.restart(session.station.address);
             return;
         default:
             return;
@@ -70,30 +75,29 @@ void ReceiverService::check_timeout(Buffer &buffer) {
 //TODO refactor too big function
 void ReceiverService::start() {
     int nfds;
-    char reply_buffer[READ_BUFFER_SIZE];
-    auto read_buffer = new char[MAX_UDP_SIZE];
+    auto read_buffer = new char[MAX_UDP_SIZE];//TODO do I read only one packet with read?
     Packet *packet;
     Buffer buffer(buffer_size);//TODO smth with this
 
     //it is guaranteed that vector allocates continuous memory blocks
     while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) syserr("error in poll");
-//        check_timeout(buffer); //TODO test
+        check_timeout(buffer);
 
         //0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
             std::cerr<<"0 desc"<<std::endl;
-            bzero(reply_buffer, CTRL_BUFFER_SIZE);
+            bzero(read_buffer, CTRL_BUFFER_SIZE);
             sockaddr_in server_address{};
             socklen_t len = sizeof(server_address);
-            auto read_bytes = recvfrom(connections[0].fd, reply_buffer, sizeof(reply_buffer), 0,
+            auto read_bytes = recvfrom(connections[0].fd, read_buffer, sizeof(read_buffer), 0,
                                        (sockaddr *) &server_address, &len);
             if (read_bytes < 0) {
                 logerr("read in 0th fd poll");
                 restart(CONNECT_FIRST, buffer);
             }
 
-            discover_handler(reply_buffer, server_address);
+            discover_handler(read_buffer, server_address);
 
             if (session.current_status == DOWN && !stations.empty()) {
                 //TODO with option -n
@@ -104,7 +108,7 @@ void ReceiverService::start() {
         //current server
         if (connections[1].revents & POLLIN) {
             std::cerr<<1 <<" desc"<<std::endl;
-
+            bzero(read_buffer, sizeof(read_buffer));
 //            std::cerr << "read from cur server" << std::endl;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
             ssize_t psize = read_bytes - 16;
@@ -138,6 +142,9 @@ void ReceiverService::start() {
                     connections[2].events = POLLOUT;
                 }
             }
+            if(packet->session_id> session.session_id){
+                restart(CONNECT_FIRST,buffer);
+            }
         }
         //STDOUT
         if (connections[2].revents & POLLOUT) {
@@ -145,19 +152,14 @@ void ReceiverService::start() {
 
             auto readable = buffer.read();
 
-
             if (readable.first == 0) {
                 restart(CONNECT_FIRST, buffer);
+                std::cerr<<"connection restarted"<<std::endl;
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
                 fflush(stdout);
                 buffer.commit_read(written_data);
             };
-
-
-//            auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
-//            fflush(stdout);
-//            buffer.commit_read(written_data);
         }
 
         //TODO ui ports
