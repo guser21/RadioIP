@@ -94,14 +94,12 @@ void RetransmissionService::start() {
                 //TODO test
                 while (!retransmissionQueue.empty() && smallest->first <= millis_now) {
                     auto msg = serialize_to_msg(smallest->second);
-                    //TODO may block
                     auto sent_data = sendto(retr_socket, msg.c_str(), msg.size(), 0,
                                             reinterpret_cast<const sockaddr *>(&server_addr),
                                             sizeof(server_addr));
 
-                    //TODO Add error handling
                     std::cerr << "sending request " << msg << std::endl;
-                    if (sent_data < 0) logerr("couldn't send retransmission");
+                    if (sent_data < 0) std::cerr<<"couldn't send retransmission"<<std::endl;
 
                     uint64_t next_update = get_now_mill() + rtime;
                     retransmissionQueue[next_update] = smallest->second;

@@ -95,7 +95,6 @@ void ReceiverService::check_timeout() {
 //TODO refactor too big function
 void ReceiverService::start() {
     int nfds;
-    auto read_buffer = new char[MAX_UDP_SIZE];//TODO do I read only one packet with read?
     Packet *packet;
 
     //it is guaranteed that vector allocates continuous memory blocks
@@ -112,7 +111,7 @@ void ReceiverService::start() {
             socklen_t len = sizeof(server_address);
             auto read_bytes = recvfrom(connections[0].fd, read_buffer, MAX_UDP_SIZE, 0,
                                        (sockaddr *) &server_address, &len);
-            if (read_bytes < 0) {
+            if (read_bytes <= 0) {
                 logerr("read in 0th fd poll");
                 restart(Strategy::CONNECT_FIRST, InvalidStation);
             }
@@ -120,9 +119,17 @@ void ReceiverService::start() {
             discover_handler(read_buffer, server_address);
 
             if (session.current_status == Status::DOWN && !stations.empty()) {
-                //TODO with option -n
-                restart(Strategy::CONNECT_FIRST, InvalidStation);
+                if (this->prefer_station) {
+                    for (auto &station: stations) {
+                        station.name == this->prefered_station;
+                        restart(Strategy::CONNECT_THIS, station);
+                        break;
+                    }
+                } else {
+                    restart(Strategy::CONNECT_FIRST, InvalidStation);
+                }
             }
+
         }
 
         //current server
@@ -131,10 +138,13 @@ void ReceiverService::start() {
             bzero(read_buffer, sizeof(read_buffer));
             //TODO handle
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
-            ssize_t psize = read_bytes - 16;
+            ssize_t psize = read_bytes - sizeof(Packet) + 1;
             // TODO Serialize deserialize
             packet = reinterpret_cast<Packet *> (read_buffer);
             // 2 8byte numbers
+            packet->session_id = be64toh(packet->session_id);
+            packet->first_byte_num = be64toh(packet->first_byte_num);
+
 
             if (session.current_status == Status::WAITING_FIRST_PACKET) {
                 session.current_status = Status::ACTIVE;
@@ -307,7 +317,6 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
         });
         update_ui();
     }
-
 }
 
 ReceiverService::ReceiverService(DiscoverService &discoverService,
@@ -322,15 +331,16 @@ ReceiverService::ReceiverService(DiscoverService &discoverService,
     this->ctrl_port = clientOptions.ctrl_port;
     this->prefered_station = clientOptions.prefered_station;
     this->prefer_station = clientOptions.prefer_station;
+    this->read_buffer = new char[MAX_UDP_SIZE];//TODO do I read only one packet with read?
+
 
     this->discoverService.setup();
     this->discoverService.start();
-    this->server_reply_sock = discoverService.get_disc_sock();
+    this->server_reply_sock = this->discoverService.get_disc_sock();
 
-    buffer = new Buffer(buffer_size);
+    this->buffer = new Buffer(buffer_size);
 
-    uiService.setup();
-
+    this->uiService.setup();
 
     this->setup();
 }
@@ -377,5 +387,5 @@ void ReceiverService::setup() {
 
 ReceiverService::~ReceiverService() {
     delete buffer;
-
+    delete read_buffer;
 }

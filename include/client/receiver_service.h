@@ -67,7 +67,7 @@ private:
     bool prefer_station = false;
 
     struct ip_mreq request{};
-
+    char* read_buffer;
 public:
     virtual ~ReceiverService();
 
