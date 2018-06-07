@@ -103,8 +103,6 @@ void ReceiverService::start() {
     while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) syserr("error in poll");
         check_timeout();
-
-
 //        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
             std::cerr << 0 << std::endl;
