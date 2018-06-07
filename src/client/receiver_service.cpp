@@ -95,6 +95,10 @@ void ReceiverService::start() {
         if (nfds < 0) syserr("error in poll");
         check_timeout(buffer);
 
+        //TODO handle normally
+        uiService.update_view(stations, session.station);
+
+
 //        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
             std::cerr << 0 << std::endl;
@@ -174,8 +178,38 @@ void ReceiverService::start() {
                 buffer.commit_read(written_data);
             };
         }
+        //UI central accept connections
+        if (connections[3].revents & POLLIN) {
+            int fd = uiService.accept_connection();
 
-        //TODO ui ports
+            struct pollfd ui_client;
+            ui_client.revents = 0;
+            ui_client.events = POLLOUT | POLLIN;
+            ui_client.fd = fd;
+
+            connections.push_back(ui_client);
+        }
+
+        std::vector<int> drop_ui;
+        for (int i = 4; i < connections.size(); i++) {
+            auto resp = uiService.handle_io(connections[i].fd, connections[i].revents);
+            switch (resp) {
+                case Response::REMOVE:
+                    drop_ui.push_back(i);
+                case Response::UP:
+                    //TODO
+                case Response::DOWN:
+                    //TODO
+                case Response::NOMOREOUT:
+                    connections[i].events = POLLIN;
+                default:
+                    continue;
+            }
+        }
+
+        for (int j = 0; j < drop_ui.size(); ++j) {
+            connections.erase(connections.begin() + drop_ui[j]);
+        }
 
         std::transform(connections.begin(), connections.end(), connections.begin(), [](struct pollfd p) {
             p.revents = 0;
@@ -271,6 +305,8 @@ ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &ui
     this->server_reply_sock = discoverService.get_disc_sock();
 
     this->setup();
+
+    uiService.setup();
     this->ui_socket = uiService.get_reg_socket();
 
 }
@@ -308,11 +344,8 @@ void ReceiverService::setup() {
     //Setting stdout to non-block
     if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("could not set stdout to nonblock");
 
-
-    //TODO turn on ui service
     struct pollfd ui_server;
-//    ui_server.fd = ui_socket;
-    ui_server.fd = -1;
+    ui_server.fd = ui_socket;
     ui_server.events = POLLIN;
     ui_server.revents = 0;
     connections.push_back(ui_server);

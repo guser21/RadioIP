@@ -100,6 +100,8 @@ void RetransmissionService::start() {
                     auto sent_data = sendto(retr_socket, msg.c_str(), msg.size(), 0,
                                             reinterpret_cast<const sockaddr *>(&server_addr),
                                             sizeof(server_addr));
+
+                    ///TODO Add error handling
                     std::cerr << "sending request " << msg << std::endl;
                     if (sent_data < 0) logerr("couldn't send retransmission");
 

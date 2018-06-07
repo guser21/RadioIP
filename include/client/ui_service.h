@@ -12,20 +12,24 @@
 struct UIClient {
     int fd = -1;
     int view_pos = 0;
-    int clear_pos = -1;
+    int clear_pos = 0;
+    struct sockaddr_in client_address{};
     //collect chars until make sense then clean the buffer
     std::string input_buffer;
-    struct sockaddr_in client_address;
 };
 
 
-//enum class
+enum class Response {
+    UP, DOWN, NONE, REMOVE, NOMOREOUT
+};
+
 class UIService {
 private:
     std::string view;
     int reg_socket;
     uint16_t ui_port;
-    std::map<int,UIClient> clients;
+    std::map<int, UIClient> clients;
+    char *read_buffer;
 public:
 
     int accept_connection();
@@ -36,9 +40,11 @@ public:
 
     int get_reg_socket();
 
-
+    ~UIService();
 
     explicit UIService(uint16_t ui_port);
+
+    Response handle_io(int fd, short event);
 };
 
 #endif //RADIO_UI_SERVICE_H

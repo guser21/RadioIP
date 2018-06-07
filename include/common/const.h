@@ -29,12 +29,13 @@
 #define DROP_TIMEOUT 20
 #define QUEUE_LENGTH 5
 #define MAX_UDP_SIZE (65535+1000)
-const char UP_KEY[] = {27, 91, 65};
-const char DOWN_KEY[] = {27, 91, 66};
-const char ENTER[] = {13};
-const char CLEAR[] = {0x1B, 'c', '\0'};
-const char LINEMODE[] = "\377\375\042\377\373\001";
+#define TCP_READ_BUFFER 100
+
 #define LINE "------------------------------------------------------------------------"
 #define CLIENT_NAME "  SIK Radio"
+const char UP_KEY[] = {27, 91, 65};
+const char DOWN_KEY[] = {27, 91, 66};
+const char CLEAR[] = {0x1B, 'c', '\0'};
+const char LINEMODE[] = "\377\375\042\377\373\001";
 
 #endif //RADIO_CONST_H
