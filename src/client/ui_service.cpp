@@ -13,7 +13,7 @@
 #include <strings.h>
 #include <poll.h>
 
-static bool ends_with(std::string const &fullString, std::string const &ending) {
+static bool ends_with(std::string &fullString, std::string ending) {
     if (fullString.length() >= ending.length()) {
         return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
     } else {
@@ -62,11 +62,12 @@ Response UIService::handle_io(int fd, short event) {
             return Response::REMOVE;
         }
         client.input_buffer.append(read_buffer, read_bytes);
-        if (ends_with(client.input_buffer, UP_KEY)) {
+        if (ends_with(client.input_buffer, std::string(UP_KEY, sizeof(UP_KEY)))) {
             client.input_buffer.clear();
             return Response::UP;
         }
-        if (ends_with(client.input_buffer, DOWN_KEY)) {
+
+        if (ends_with(client.input_buffer, std::string(DOWN_KEY, sizeof(DOWN_KEY)))) {
             client.input_buffer.clear();
             return Response::DOWN;
         }
@@ -81,7 +82,9 @@ Response UIService::handle_io(int fd, short event) {
                 return Response::REMOVE;
             }
             client.clear_pos += cl_pos;
-        } else {
+        }
+
+        if (client.clear_pos == sizeof(CLEAR)) {
             auto written = write(fd, view.c_str() + client.view_pos, view.size() - client.view_pos);
             if (written < 0) {
                 close(fd);
@@ -91,7 +94,7 @@ Response UIService::handle_io(int fd, short event) {
             client.view_pos += written;
         }
 
-        if(client.view_pos==view.size()){
+        if (client.view_pos == view.size()) {
             return Response::NOMOREOUT;
         }
     }
@@ -119,6 +122,8 @@ void UIService::update_view(std::vector<Station> &stations, Station &current_sta
         view += station.name;
         view += "\n\r";
     }
+    view += LINE;
+
     for (auto &cl:clients) {
         cl.second.view_pos = 0;
         cl.second.clear_pos = 0;
@@ -136,7 +141,10 @@ int UIService::accept_connection() {
 
     if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) logerr("could not set client fd to nonblock");
 
+    client.fd = fd;
     clients[fd] = client;
+
+    return fd;
 }
 
 UIService::UIService(uint16_t ui_port) : ui_port(ui_port) {

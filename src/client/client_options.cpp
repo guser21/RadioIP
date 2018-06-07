@@ -30,13 +30,18 @@ ClientOptions ClientOptionsParser::parse(int argc, char **argv) {
             std::cerr << desc << std::endl;
             exit(0);
         }
-        //TODO option -n
+
+
+        if (vm.count("-n")) {
+            clientOptions.prefer_station = true;
+            clientOptions.prefered_station = vm["-n"].as<std::string>();
+        }
 
         clientOptions.discover_addr = vm["-d"].as<std::string>();
         clientOptions.ctrl_port = vm["-C"].as<uint16_t>();
         clientOptions.ui_port = vm["-U"].as<uint16_t>();
-        clientOptions.buffer_size = vm["-B"].as< int>();
-        clientOptions.rtime = vm["-R"].as< int>();
+        clientOptions.buffer_size = vm["-B"].as<int>();
+        clientOptions.rtime = vm["-R"].as<int>();
     } catch (std::exception &err) {
         std::cerr << err.what() << std::endl;
         exit(1);

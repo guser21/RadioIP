@@ -6,6 +6,7 @@
 
 #include <string>
 #include <client/buffer.h>
+#include <common/const.h>
 
 using std::string;
 
@@ -56,5 +57,6 @@ TEST(Edge_Case, ClientBuffer) {
 
 
 }
+
 
 

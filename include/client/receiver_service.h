@@ -23,7 +23,8 @@ enum class Status {
 };
 enum class Strategy {
     CONNECT_FIRST,
-    RECONNECT
+    RECONNECT,
+    CONNECT_THIS
 };
 
 struct Session {
@@ -47,26 +48,33 @@ class ReceiverService {
 private:
     std::vector<struct pollfd> connections;
     int server_reply_sock;
-    ClientParser client_parser;
     std::vector<Station> stations;
+    ClientParser client_parser;
 
     UIService &uiService;
     DiscoverService &discoverService;
     RetransmissionService &retransmissionService;
     Session session;
-    int ui_socket;
+    Buffer *buffer;
+
+
     int rtime;
     int buffer_size;
     int data_socket;
     uint16_t ctrl_port;
 
+    std::string prefered_station;
+    bool prefer_station = false;
+
     struct ip_mreq request{};
 
 public:
+    virtual ~ReceiverService();
 
     void start();
 
-    ReceiverService(DiscoverService &discoverService, UIService &uiService,RetransmissionService& retransmissionService, ClientOptions clientOptions);
+    ReceiverService(DiscoverService &discoverService, UIService &uiService,
+                    RetransmissionService &retransmissionService, ClientOptions clientOptions);
 
     int connect(Station cur_station);
 
@@ -76,9 +84,11 @@ public:
 
     void disconnect();
 
-    void restart(Strategy r, Buffer &buffer);
+    void restart(Strategy strategy,Station station);
 
-    void check_timeout(Buffer &buffer);
+    void check_timeout();
+
+    void update_ui();
 };
 
 #endif //RADIO_RECIEVER_SERVICE_H

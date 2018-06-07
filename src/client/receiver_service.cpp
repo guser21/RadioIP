@@ -24,19 +24,18 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
-void ReceiverService::restart(Strategy r, Buffer &buffer) {
+void ReceiverService::restart(Strategy strategy, Station station) {
     auto previous_station = session.station;
     session.clean();
-    buffer.clean();
+    buffer->clean();
 
     connections[2].events = 0;
     session.current_status = Status::DOWN;
+    if (connections[1].fd != -1) disconnect();
 
-    switch (r) {
+    switch (strategy) {
         case Strategy::CONNECT_FIRST:
             if (!stations.empty()) {
-                if (connections[1].fd != -1) disconnect();
-
                 connections[1].fd = connect(stations[0]);
                 connections[1].events = POLLIN;
 
@@ -46,13 +45,9 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
                 retransmissionService.restart(session.station.address);
             } else {
                 session.current_status = Status::DOWN;
-
             }
-            return;
+            break;
         case Strategy::RECONNECT:
-            if (connections[1].fd != -1) disconnect();
-
-
             session.station = previous_station;
             session.current_status = Status::WAITING_FIRST_PACKET;
 
@@ -60,14 +55,27 @@ void ReceiverService::restart(Strategy r, Buffer &buffer) {
             connections[1].events = POLLIN;
 
             retransmissionService.restart(session.station.address);
-            return;
-        default:
-            return;
-    }
+            break;
+        case Strategy::CONNECT_THIS:
+            session.station = station;
+            session.current_status = Status::WAITING_FIRST_PACKET;
 
+            connections[1].fd = connect(station);
+            connections[1].events = POLLIN;
+
+            retransmissionService.restart(station.address);
+    }
+    update_ui();
 }
 
-void ReceiverService::check_timeout(Buffer &buffer) {
+void ReceiverService::update_ui() {
+    uiService.update_view(stations, session.station);
+    for (int i = 4; i < connections.size(); ++i) {
+        connections[i].events = POLLIN | POLLOUT;
+    }
+}
+
+void ReceiverService::check_timeout() {
     auto now = std::chrono::system_clock::now().time_since_epoch();
     auto cur_time = std::chrono::duration_cast<std::chrono::seconds>(now).count();
 
@@ -76,27 +84,25 @@ void ReceiverService::check_timeout(Buffer &buffer) {
             auto erased_station = stations[i];
             stations.erase(stations.begin() + i);
             if (session.station == erased_station) {
-                restart(Strategy::CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, InvalidStation);
                 std::cerr << "dropping" << std::endl;
             }
         }
     }
 }
 
+
 //TODO refactor too big function
 void ReceiverService::start() {
     int nfds;
     auto read_buffer = new char[MAX_UDP_SIZE];//TODO do I read only one packet with read?
     Packet *packet;
-    Buffer buffer(buffer_size);//TODO smth with this
 
     //it is guaranteed that vector allocates continuous memory blocks
-    while ((nfds = poll(&connections[0], connections.size(), 500)) >= 0) {
+    //TODO change -1 to  value
+    while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) syserr("error in poll");
-        check_timeout(buffer);
-
-        //TODO handle normally
-        uiService.update_view(stations, session.station);
+        check_timeout();
 
 
 //        0 - server_reply socket UDP
@@ -110,23 +116,22 @@ void ReceiverService::start() {
                                        (sockaddr *) &server_address, &len);
             if (read_bytes < 0) {
                 logerr("read in 0th fd poll");
-                restart(Strategy::CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, InvalidStation);
             }
 
             discover_handler(read_buffer, server_address);
 
             if (session.current_status == Status::DOWN && !stations.empty()) {
                 //TODO with option -n
-                restart(Strategy::CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, InvalidStation);
             }
         }
 
         //current server
         if (connections[1].revents & POLLIN) {
             std::cerr << "1" << std::endl;
-
-
             bzero(read_buffer, sizeof(read_buffer));
+            //TODO handle
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
             ssize_t psize = read_bytes - 16;
             // TODO Serialize deserialize
@@ -140,9 +145,8 @@ void ReceiverService::start() {
                 session.byte0 = packet->first_byte_num;
                 session.max_packet_id = packet->first_byte_num;
             }
-
+            //TODO change implementation
             if (session.current_status == Status::ACTIVE) {
-                //TODO which packets should be retransmitted
                 if (packet->first_byte_num > session.max_packet_id + psize) {
                     retransmissionService.add_request(session.max_packet_id + psize, packet->first_byte_num, psize);
                 }
@@ -153,29 +157,30 @@ void ReceiverService::start() {
 
             if (packet->first_byte_num >= session.byte0 && packet->session_id == session.session_id) {
                 session.max_packet_id = std::max(packet->first_byte_num, session.max_packet_id);
-                buffer.push(packet->audio_data, psize, packet->first_byte_num);
+                buffer->push(packet->audio_data, psize, packet->first_byte_num);
 
                 if (session.max_packet_id > session.byte0 + 3 * (buffer_size / 4)) {
                     connections[2].events = POLLOUT;
                 }
             }
             if (packet->session_id > session.session_id) {
-                restart(Strategy::CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, InvalidStation);
             }
         }
+
         //STDOUT
         if (connections[2].revents & POLLOUT) {
             std::cerr << 2 << std::endl;
 
-            auto readable = buffer.read();
+            auto readable = buffer->read();
 
             if (readable.first == 0) {
-                restart(Strategy::RECONNECT, buffer);
+                restart(Strategy::RECONNECT, InvalidStation);
                 std::cerr << "connection restarted" << std::endl;
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
                 fflush(stdout);
-                buffer.commit_read(written_data);
+                buffer->commit_read(written_data);
             };
         }
         //UI central accept connections
@@ -188,22 +193,40 @@ void ReceiverService::start() {
             ui_client.fd = fd;
 
             connections.push_back(ui_client);
+
+            update_ui();
         }
+
 
         std::vector<int> drop_ui;
         for (int i = 4; i < connections.size(); i++) {
             auto resp = uiService.handle_io(connections[i].fd, connections[i].revents);
+            int next_station, prev_station, max_id = static_cast<int>(stations.size());
+            int cur_stationID = -1;
+
+            for (int j = 0; j < stations.size(); ++j) {
+                if (stations[j] == session.station) {
+                    cur_stationID = j;
+                }
+            }
+
             switch (resp) {
                 case Response::REMOVE:
                     drop_ui.push_back(i);
                 case Response::UP:
-                    //TODO
+                    if (cur_stationID != -1) {
+                        prev_station = ((cur_stationID - 1 + max_id) % max_id);
+                        restart(Strategy::CONNECT_THIS, stations[prev_station]);
+                    }
                 case Response::DOWN:
-                    //TODO
+                    if (cur_stationID != -1) {
+                        next_station = ((cur_stationID + 1 + max_id) % max_id);
+                        restart(Strategy::CONNECT_THIS, stations[next_station]);
+                    }
                 case Response::NOMOREOUT:
                     connections[i].events = POLLIN;
-                default:
-                    continue;
+                case Response::NONE:
+                    break;
             }
         }
 
@@ -284,31 +307,34 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
         std::sort(stations.begin(), stations.end(), [](const Station &l, const Station &r) {
             return l.name.compare(r.name);
         });
+        update_ui();
     }
 
 }
 
-ReceiverService::ReceiverService(DiscoverService &discoverService, UIService &uiService,
+ReceiverService::ReceiverService(DiscoverService &discoverService,
+                                 UIService &uiService,
                                  RetransmissionService &retransmissionService,
                                  ClientOptions clientOptions) :
-        discoverService(discoverService),    //TODO turn on ui service
-
+        discoverService(discoverService),
         retransmissionService(retransmissionService),
         uiService(uiService) {
     this->buffer_size = clientOptions.buffer_size;
     this->rtime = clientOptions.rtime;
     this->ctrl_port = clientOptions.ctrl_port;
+    this->prefered_station = clientOptions.prefered_station;
+    this->prefer_station = clientOptions.prefer_station;
 
     this->discoverService.setup();
     this->discoverService.start();
-
     this->server_reply_sock = discoverService.get_disc_sock();
 
-    this->setup();
+    buffer = new Buffer(buffer_size);
 
     uiService.setup();
-    this->ui_socket = uiService.get_reg_socket();
 
+
+    this->setup();
 }
 
 /*
@@ -344,9 +370,14 @@ void ReceiverService::setup() {
     //Setting stdout to non-block
     if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("could not set stdout to nonblock");
 
-    struct pollfd ui_server;
-    ui_server.fd = ui_socket;
-    ui_server.events = POLLIN;
-    ui_server.revents = 0;
-    connections.push_back(ui_server);
+    struct pollfd ui_connection;
+    ui_connection.fd = uiService.get_reg_socket();
+    ui_connection.events = POLLIN;
+    ui_connection.revents = 0;
+    connections.push_back(ui_connection);
+}
+
+ReceiverService::~ReceiverService() {
+    delete buffer;
+
 }

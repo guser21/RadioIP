@@ -58,6 +58,7 @@ static std::string serialize_to_msg(std::vector<uint64_t> &pack_ids) {
         msg += ",";
     }
     msg += std::to_string(pack_ids[pack_ids.size() - 1]);
+    msg+="\n";
     return msg;
 }
 
@@ -70,7 +71,6 @@ static uint64_t get_now_mill() {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
-//TODO what if sendto blocks
 void RetransmissionService::start() {
     std::thread([&] {
         auto max_point = std::chrono::time_point<Clock, Ms>::max();
@@ -95,13 +95,11 @@ void RetransmissionService::start() {
                 while (!retransmissionQueue.empty() && smallest->first <= millis_now) {
                     auto msg = serialize_to_msg(smallest->second);
                     //TODO may block
-                    //TODO semantics of non blocking udp socket
-
                     auto sent_data = sendto(retr_socket, msg.c_str(), msg.size(), 0,
                                             reinterpret_cast<const sockaddr *>(&server_addr),
                                             sizeof(server_addr));
 
-                    ///TODO Add error handling
+                    //TODO Add error handling
                     std::cerr << "sending request " << msg << std::endl;
                     if (sent_data < 0) logerr("couldn't send retransmission");
 
