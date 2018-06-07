@@ -16,18 +16,18 @@
 #include "retransmission_service.h"
 #include <poll.h>
 
-enum Status {
+enum class Status {
     ACTIVE,
     DOWN,
     WAITING_FIRST_PACKET
 };
-enum Strategy {
+enum class Strategy {
     CONNECT_FIRST,
     RECONNECT
 };
 
 struct Session {
-    Status current_status = DOWN;
+    Status current_status = Status::DOWN;
     uint64_t byte0 = 0;
     uint64_t session_id = 0;
     Station station = InvalidStation;
@@ -37,7 +37,7 @@ struct Session {
         max_packet_id = 0;
         byte0 = 0;
         session_id = 0;
-        current_status = DOWN;
+        current_status = Status::DOWN;
         station = InvalidStation;
     }
 };

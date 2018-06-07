@@ -7,10 +7,9 @@
 #include <netinet/in.h>
 #include <common/err.h>
 #include <common/const.h>
-
-std::string UIService::get_current_view() {
-    return nullptr;
-}
+#include <iostream>
+#include <zconf.h>
+#include <fcntl.h>
 
 void UIService::setup() {
     sockaddr_in server_address{};
@@ -36,13 +35,8 @@ int UIService::get_reg_socket() {
     return reg_socket;
 }
 
-void UIService::setReg_socket(int reg_socket) {
-    UIService::reg_socket = reg_socket;
-}
 
-UIService::UIService(uint16_t ui_port) {
-
-}
+UIService::UIService(uint16_t ui_port) :ui_port(ui_port) {}
 
 void UIService::update_view(std::vector<Station> &stations, Station &current_station) {
     view.clear();
@@ -56,13 +50,27 @@ void UIService::update_view(std::vector<Station> &stations, Station &current_sta
     view += LINE;
     view += "\n\r";
     for (auto &station: stations) {
-        if(station==current_station){
-            view+="  > ";
-        } else{
-            view+="    ";
+        if (station == current_station) {
+            view += "  > ";
+        } else {
+            view += "    ";
         }
-        view+=station.name;
+        view += station.name;
+        view += "\n\r";
     }
+}
 
+int UIService::accept_connection() {
+    UIClient client;
+    socklen_t client_address_len = sizeof(client.client_address);
+    int fd = accept(reg_socket, (struct sockaddr *) &client.client_address, &client_address_len);
+    if (fd < 0) logerr("accept connection in ui");
+
+    //7 bytes is not enough to get blocked by write
+    if (write(fd, LINEMODE, 7) != 7) logerr("telnet not configured");
+
+    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) logerr("could not set client fd to nonblock");
+
+    clients[fd]=client;
 }
 

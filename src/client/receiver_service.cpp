@@ -25,30 +25,40 @@
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
 void ReceiverService::restart(Strategy r, Buffer &buffer) {
+    auto previous_station = session.station;
     session.clean();
     buffer.clean();
 
     connections[2].events = 0;
-    session.current_status = DOWN;
+    session.current_status = Status::DOWN;
 
     switch (r) {
-        case CONNECT_FIRST:
+        case Strategy::CONNECT_FIRST:
             if (!stations.empty()) {
                 if (connections[1].fd != -1) disconnect();
+
                 connections[1].fd = connect(stations[0]);
                 connections[1].events = POLLIN;
+
                 session.station = stations[0];
-                session.current_status = WAITING_FIRST_PACKET;
+                session.current_status = Status::WAITING_FIRST_PACKET;
+
                 retransmissionService.restart(session.station.address);
-            } else{
-                session.current_status = DOWN;
+            } else {
+                session.current_status = Status::DOWN;
+
             }
             return;
-        case RECONNECT:
+        case Strategy::RECONNECT:
             if (connections[1].fd != -1) disconnect();
-            connections[1].fd = connect(session.station);
+
+
+            session.station = previous_station;
+            session.current_status = Status::WAITING_FIRST_PACKET;
+
+            connections[1].fd = connect(previous_station);
             connections[1].events = POLLIN;
-            session.current_status = WAITING_FIRST_PACKET;
+
             retransmissionService.restart(session.station.address);
             return;
         default:
@@ -66,7 +76,7 @@ void ReceiverService::check_timeout(Buffer &buffer) {
             auto erased_station = stations[i];
             stations.erase(stations.begin() + i);
             if (session.station == erased_station) {
-                restart(CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, buffer);
                 std::cerr << "dropping" << std::endl;
             }
         }
@@ -85,8 +95,10 @@ void ReceiverService::start() {
         if (nfds < 0) syserr("error in poll");
         check_timeout(buffer);
 
-        //0 - server_reply socket UDP
+//        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
+            std::cerr << 0 << std::endl;
+
             bzero(read_buffer, MAX_UDP_SIZE);
             sockaddr_in server_address{};
             socklen_t len = sizeof(server_address);
@@ -94,36 +106,38 @@ void ReceiverService::start() {
                                        (sockaddr *) &server_address, &len);
             if (read_bytes < 0) {
                 logerr("read in 0th fd poll");
-                restart(CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, buffer);
             }
 
             discover_handler(read_buffer, server_address);
 
-            if (session.current_status == DOWN && !stations.empty()) {
+            if (session.current_status == Status::DOWN && !stations.empty()) {
                 //TODO with option -n
-                restart(CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, buffer);
             }
         }
 
         //current server
         if (connections[1].revents & POLLIN) {
+            std::cerr << "1" << std::endl;
+
+
             bzero(read_buffer, sizeof(read_buffer));
-//            std::cerr << "read from cur server" << std::endl;
             auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
             ssize_t psize = read_bytes - 16;
             // TODO Serialize deserialize
             packet = reinterpret_cast<Packet *> (read_buffer);
             // 2 8byte numbers
 
-            if (session.current_status == WAITING_FIRST_PACKET) {
-                session.current_status = ACTIVE;
+            if (session.current_status == Status::WAITING_FIRST_PACKET) {
+                session.current_status = Status::ACTIVE;
 
                 session.session_id = packet->session_id;
                 session.byte0 = packet->first_byte_num;
                 session.max_packet_id = packet->first_byte_num;
             }
 
-            if (session.current_status == ACTIVE) {
+            if (session.current_status == Status::ACTIVE) {
                 //TODO which packets should be retransmitted
                 if (packet->first_byte_num > session.max_packet_id + psize) {
                     retransmissionService.add_request(session.max_packet_id + psize, packet->first_byte_num, psize);
@@ -142,16 +156,17 @@ void ReceiverService::start() {
                 }
             }
             if (packet->session_id > session.session_id) {
-                restart(CONNECT_FIRST, buffer);
+                restart(Strategy::CONNECT_FIRST, buffer);
             }
         }
         //STDOUT
         if (connections[2].revents & POLLOUT) {
+            std::cerr << 2 << std::endl;
 
             auto readable = buffer.read();
 
             if (readable.first == 0) {
-                restart(CONNECT_FIRST, buffer);
+                restart(Strategy::RECONNECT, buffer);
                 std::cerr << "connection restarted" << std::endl;
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
@@ -291,7 +306,7 @@ void ReceiverService::setup() {
     connections.push_back(stdout_fd);
 
     //Setting stdout to non-block
-    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("fcntl in setup receiver service");
+    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("could not set stdout to nonblock");
 
 
     //TODO turn on ui service
