@@ -58,6 +58,7 @@ static std::string serialize_to_msg(std::vector<uint64_t> &pack_ids) {
         msg += ",";
     }
     msg += std::to_string(pack_ids[pack_ids.size() - 1]);
+    msg += '\n';
     return msg;
 }
 
@@ -72,8 +73,9 @@ static uint64_t get_now_mill() {
 
 void RetransmissionService::start() {
     std::thread([&] {
-        auto max_point = std::chrono::time_point<Clock, Ms>::max();
-        auto stall = std::chrono::time_point_cast<std::chrono::milliseconds>(max_point).time_since_epoch().count();
+        auto stall_point = Clock::now();
+        stall_point += std::chrono::hours(100);
+        auto stall = std::chrono::time_point_cast<std::chrono::milliseconds>(stall_point).time_since_epoch().count();
         auto next_read = stall;
 
         while (true) {
@@ -98,7 +100,7 @@ void RetransmissionService::start() {
                                             sizeof(server_addr));
 
                     std::cerr << "sending request " << msg << std::endl;
-                    if (sent_data < 0) std::cerr<<"couldn't send retransmission"<<std::endl;
+                    if (sent_data < 0) std::cerr << "couldn't send retransmission" << std::endl;
 
                     uint64_t next_update = get_now_mill() + rtime;
                     retransmissionQueue[next_update] = smallest->second;

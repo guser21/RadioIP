@@ -27,7 +27,7 @@ void DiscoverService::setup() {
     bzero(&disc_addr, sizeof(disc_addr));
 
     disc_addr.sin_family = AF_INET;
-    disc_addr.sin_port = htons(ctrl_port);//data_port
+    disc_addr.sin_port = htons(ctrl_port);
 
     int rtvl = inet_pton(AF_INET, discover_addr.c_str(), &disc_addr.sin_addr);//ip address
     if (rtvl < 0) syserr("inet_pton discover service");
@@ -35,16 +35,6 @@ void DiscoverService::setup() {
     int enable_broadcast = 1;
     rtvl = setsockopt(disc_socket, SOL_SOCKET, SO_BROADCAST, &enable_broadcast, sizeof(enable_broadcast));
     if (rtvl < 0) syserr("setsockopt failed in discover connect");
-
-    struct sockaddr_in local_address{};
-    bzero(&local_address, sizeof(local_address));
-
-    local_address.sin_family = AF_INET;
-    local_address.sin_addr.s_addr = htonl(INADDR_ANY);
-    local_address.sin_port = htons(0);//choose yourself
-
-    rtvl = bind(disc_socket, (struct sockaddr *) &local_address, sizeof(local_address));
-    if (rtvl < 0) syserr("bind in discover service connect");
 
     this->broadcast_addr = disc_addr;
 }
@@ -65,7 +55,7 @@ void DiscoverService::start() {
                                   sizeof(LOOKUP_MSG), 0, (struct sockaddr *) &this->broadcast_addr,
                                   sizeof(this->broadcast_addr));
             if (written_data != sizeof(LOOKUP_MSG)) logerr("write to disc socket");
-            sleep(1);//TODO every 5 seconds?
+            sleep(DISCOVER_REPEAT);
         }
     }).detach();
 }

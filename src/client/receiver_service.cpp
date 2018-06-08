@@ -180,10 +180,11 @@ void ReceiverService::start() {
     //TODO change -1 to  500
     while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) syserr("error in poll");
-//        check_timeout(); TODO
+        check_timeout();
 //        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
-//            std::cerr << 0 << std::endl;
+            std::cerr << "borewicz received"<< std::endl;
+
             lookup_handler(connections[0].fd, connections[0].revents);
         }
         //current server
@@ -200,7 +201,7 @@ void ReceiverService::start() {
 
             if (readable.first == 0) {
                 restart(Strategy::RECONNECT, InvalidStation);
-                std::cerr << "connection restarted" << std::endl;
+                std::cerr << "connection restarted: stdout" << std::endl;
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
                 fflush(stdout);

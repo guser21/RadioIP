@@ -56,7 +56,7 @@ Station ClientParser::parse(std::string msg) {
 
     station.mcast_addr = tokens[1];
     station.data_port = static_cast<uint16_t>(port);
-    station.name = msg.substr(name_ind + 1);
+    station.name = msg.substr(name_ind + 1, msg.size() - name_ind - 2);
 
     station.last_discover = time(nullptr);//TODO change
 

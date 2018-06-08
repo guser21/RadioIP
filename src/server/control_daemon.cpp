@@ -50,6 +50,7 @@ std::string ControlDaemon::station_addr() {
     res += std::to_string(data_port);
     res += " ";
     res += station_name;
+    res += '\n';
     return res;
 }
 

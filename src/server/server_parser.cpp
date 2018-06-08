@@ -33,7 +33,7 @@ std::vector<uint64_t> ServerParser::parse_requests(std::string str) {
     if (str.find(prefix) != 0)
         return std::vector<uint64_t>();
 
-    str = str.substr(prefix.length());
+    str = str.substr(prefix.length(),str.size()-prefix.size()-1);
 
     std::vector<uint64_t> result;
     auto tokens = split(str, ',');

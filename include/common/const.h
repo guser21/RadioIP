@@ -17,7 +17,7 @@
 #define CTRL_BUFFER_SIZE 300
 #define LOAD_FACTOR 0.75
 #define MAX_NAME_SIZE 100
-#define LOOKUP_MSG "ZERO_SEVEN_COME_IN"
+#define LOOKUP_MSG "ZERO_SEVEN_COME_IN\n"
 #define REPLY_MSG "BOREWICZ_HERE"
 #define RETRY_MSG "LOUDER_PLEASE"
 #define STATION_NAME "Nienazwany Nadajnik"
@@ -29,7 +29,7 @@
 #define QUEUE_LENGTH 5
 #define MAX_UDP_SIZE (65535+1000)
 #define TCP_READ_BUFFER 100
-
+#define DISCOVER_REPEAT 5
 #define LINE "------------------------------------------------------------------------"
 #define CLIENT_NAME "  SIK Radio"
 const char UP_KEY[] = {27, 91, 65};
