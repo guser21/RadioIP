@@ -21,7 +21,7 @@ private:
 
     std::mutex mutex;
     std::condition_variable cond;
-    std::atomic<bool> is_restarted= false;
+    std::atomic<bool> is_restarted = ATOMIC_VAR_INIT(false);
     std::map<uint64_t, std::vector<uint64_t>> retransmissionQueue;
     struct sockaddr_in server_addr{};
     int retr_socket;
@@ -29,7 +29,7 @@ private:
 public:
     explicit RetransmissionService(uint64_t rtime);
 
-    void add_request(uint64_t from,uint64_t to,int psize);
+    void add_request(uint64_t from, uint64_t to, int psize);
 
     void notify(uint64_t id);
 

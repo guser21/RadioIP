@@ -5,7 +5,6 @@
 #include <string>
 #include <client/discover_service.h>
 #include <sys/socket.h>
-#include <common/err.h>
 #include <netinet/in.h>
 #include <strings.h>
 #include <arpa/inet.h>
@@ -18,10 +17,11 @@
 #include <sstream>
 #include <vector>
 #include <mutex>
+#include <common/err.h>
 
 void DiscoverService::setup() {
     disc_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (disc_socket < 0) syserr("discover service socket");
+    if (disc_socket < 0) LogErr::syserr("discover service socket");
 
     struct sockaddr_in disc_addr{};
     bzero(&disc_addr, sizeof(disc_addr));
@@ -30,11 +30,11 @@ void DiscoverService::setup() {
     disc_addr.sin_port = htons(ctrl_port);
 
     int rtvl = inet_pton(AF_INET, discover_addr.c_str(), &disc_addr.sin_addr);//ip address
-    if (rtvl < 0) syserr("inet_pton discover service");
+    if (rtvl < 0) LogErr::syserr("inet_pton discover service");
 
     int enable_broadcast = 1;
     rtvl = setsockopt(disc_socket, SOL_SOCKET, SO_BROADCAST, &enable_broadcast, sizeof(enable_broadcast));
-    if (rtvl < 0) syserr("setsockopt failed in discover connect");
+    if (rtvl < 0) LogErr::syserr("setsockopt failed in discover connect");
 
     this->broadcast_addr = disc_addr;
 }
@@ -54,7 +54,7 @@ void DiscoverService::start() {
             written_data = sendto(disc_socket, LOOKUP_MSG,
                                   sizeof(LOOKUP_MSG), 0, (struct sockaddr *) &this->broadcast_addr,
                                   sizeof(this->broadcast_addr));
-            if (written_data != sizeof(LOOKUP_MSG)) logerr("write to disc socket");
+            if (written_data != sizeof(LOOKUP_MSG)) LogErr::logerr("write to disc socket");
             sleep(DISCOVER_REPEAT);
         }
     }).detach();

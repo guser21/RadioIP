@@ -27,17 +27,17 @@ void ControlDaemon::setup() {
     bzero(&hostaddr, sizeof(hostaddr));
 
     ctrl_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (ctrl_socket < 0) syserr("ctrl socket");
+    if (ctrl_socket < 0) LogErr::syserr("ctrl socket");
 
     hostaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     hostaddr.sin_port = htons(ctrl_port);
     hostaddr.sin_family = AF_INET;
     int optval = 1;
     if (setsockopt(ctrl_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
-        syserr("setsockopt on control daemon server");
+        LogErr::syserr("setsockopt on control daemon server");
 
     int rtvl = bind(ctrl_socket, (struct sockaddr *) &hostaddr, sizeof(hostaddr));
-    if (rtvl < 0) syserr("error in bind ctrl_socket");
+    if (rtvl < 0) LogErr::syserr("error in bind ctrl_socket");
 }
 
 
@@ -71,7 +71,7 @@ void ControlDaemon::request_handler() {
             snd_len = sendto(ctrl_socket, reply.c_str(), reply.size(), 0,
                              (struct sockaddr *) &client_addr, socklen);
 //            std::cerr<<reply<<" discover reply"<<std::endl;
-            if (snd_len != reply.size()) logerr("sendto in control daemon request handler ");
+            if (snd_len != reply.size()) LogErr::logerr("sendto in control daemon request handler ");
         }
 
         if (strncmp(buffer, RETRY_MSG, strlen(RETRY_MSG)) == 0) {

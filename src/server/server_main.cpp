@@ -6,11 +6,6 @@
 #include <common/safe_structures.h>
 #include <server/retransmission_daemon.h>
 
-#include <boost/log/expressions.hpp>
-
-
-#include <boost/log/trivial.hpp>
-
 
 
 int main(int argc, char *argv[]) {

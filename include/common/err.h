@@ -1,10 +1,14 @@
 #ifndef _ERR_
 #define _ERR_
 
-extern void syserr(const char *fmt, ...);
+struct LogErr {
 
-extern void fatal(const char *fmt, ...);
+    static void fatal(const char *fmt, ...);
 
-extern void logerr(const char *fmt, ...);
+    static void logerr(const char *fmt, ...);
+
+    static void syserr(const char *fmt, ...);
+};
+
 
 #endif

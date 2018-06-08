@@ -99,7 +99,7 @@ void ReceiverService::lookup_handler(int fd, uint16_t event) {
     auto read_bytes = recvfrom(fd, read_buffer, MAX_UDP_SIZE, 0,
                                (struct sockaddr *) &server_address, &len);
     if (read_bytes <= 0) {
-        logerr("read in 0th fd poll");
+        LogErr::logerr("read in 0th fd poll");
         restart(Strategy::CONNECT_FIRST, InvalidStation);
     }
 
@@ -179,7 +179,7 @@ void ReceiverService::start() {
     //it is guaranteed that vector allocates continuous memory blocks
     //TODO change -1 to  500
     while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
-        if (nfds < 0) syserr("error in poll");
+        if (nfds < 0) LogErr::syserr("error in poll");
         check_timeout();
 //        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
@@ -264,7 +264,7 @@ void ReceiverService::start() {
             return p;
         });
     }
-    logerr("error in poll");
+    LogErr::logerr("error in poll");
     delete read_buffer;
 }
 
@@ -275,19 +275,19 @@ int ReceiverService::connect(Station cur_station) {
     struct sockaddr_in local_address{};
 
     int stream_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (stream_sock < 0)syserr("socket");
+    if (stream_sock < 0)LogErr::syserr("socket");
 
     request.imr_interface.s_addr = htonl(INADDR_ANY);
 
     if (inet_aton(cur_station.mcast_addr.c_str(), &request.imr_multiaddr) == 0)
-        syserr("inet_aton");
+        LogErr::syserr("inet_aton");
 
     if (setsockopt(stream_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *) &request, sizeof request) < 0)
-        syserr("setsockopt");
+        LogErr::syserr("setsockopt");
 
     int option = 1;
     if (setsockopt(stream_sock, SOL_SOCKET, SO_REUSEADDR, (void *) &option, sizeof option) < 0)
-        syserr("setsockopt");
+        LogErr::syserr("setsockopt");
 
     bzero(&local_address, sizeof(local_address));
     local_address.sin_family = AF_INET;
@@ -295,7 +295,7 @@ int ReceiverService::connect(Station cur_station) {
     local_address.sin_port = htons(cur_station.data_port);
 
     if (bind(stream_sock, (struct sockaddr *) &local_address, sizeof local_address) < 0)
-        syserr("bind");
+        LogErr::syserr("bind");
 
     data_socket = stream_sock;
     return stream_sock;
@@ -303,7 +303,7 @@ int ReceiverService::connect(Station cur_station) {
 
 void ReceiverService::disconnect() {
     if (setsockopt(data_socket, IPPROTO_IP, IP_DROP_MEMBERSHIP, (void *) &request, sizeof request) < 0)
-        syserr("setsockopt");
+        LogErr::syserr("setsockopt");
     close(data_socket);
 }
 
@@ -393,7 +393,7 @@ void ReceiverService::setup() {
     connections.push_back(stdout_fd);
 
     //Setting stdout to non-block
-    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) syserr("could not set stdout to nonblock");
+    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) < 0) LogErr::syserr("could not set stdout to nonblock");
 
     struct pollfd ui_connection;
     ui_connection.fd = uiService.get_reg_socket();

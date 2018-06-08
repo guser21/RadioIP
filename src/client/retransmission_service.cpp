@@ -131,7 +131,7 @@ void RetransmissionService::restart(struct sockaddr_in addr) {
 
 RetransmissionService::RetransmissionService(uint64_t rtime) : rtime(rtime) {
     retr_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (retr_socket < 0) logerr("error in retransmission service socket");
+    if (retr_socket < 0) LogErr::logerr("error in retransmission service socket");
 
 
     //not the best solution but ensures responsiveness
@@ -139,7 +139,7 @@ RetransmissionService::RetransmissionService(uint64_t rtime) : rtime(rtime) {
     timeout.tv_sec = 0;
     timeout.tv_usec = 500 * 1000;
     if (setsockopt(retr_socket, SOL_SOCKET, SO_SNDTIMEO, (void *) &timeout, sizeof(timeout)) < 0)
-        logerr("setsockopt in retransmission service");
+        LogErr::logerr("setsockopt in retransmission service");
 
 
     start();

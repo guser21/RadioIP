@@ -25,7 +25,7 @@ void UIService::setup() {
     sockaddr_in server_address{};
 
     reg_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (reg_socket < 0) syserr("socket");
+    if (reg_socket < 0) LogErr::syserr("socket");
 
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -33,12 +33,12 @@ void UIService::setup() {
 
     int option = 1;
     if (setsockopt(reg_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
-        syserr("socket option in ui client");
+        LogErr::syserr("socket option in ui client");
     // bind the socket to a concrete address
     if (bind(reg_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-        syserr("bind in ui client");
+        LogErr::syserr("bind in ui client");
 
-    if (listen(reg_socket, QUEUE_LENGTH) < 0) syserr("listen");
+    if (listen(reg_socket, QUEUE_LENGTH) < 0) LogErr::syserr("listen");
 }
 
 int UIService::get_reg_socket() {
@@ -134,12 +134,12 @@ int UIService::accept_connection() {
     UIClient client;
     socklen_t client_address_len = sizeof(client.client_address);
     int fd = accept(reg_socket, (struct sockaddr *) &client.client_address, &client_address_len);
-    if (fd < 0) logerr("accept connection in ui");
+    if (fd < 0) LogErr::logerr("accept connection in ui");
 
     //7 bytes is not enough to get blocked by write
-    if (write(fd, LINEMODE, 7) != 7) logerr("telnet not configured");
+    if (write(fd, LINEMODE, 7) != 7) LogErr::logerr("telnet not configured");
 
-    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) logerr("could not set client fd to nonblock");
+    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) LogErr::logerr("could not set client fd to nonblock");
 
     client.fd = fd;
     clients[fd] = client;

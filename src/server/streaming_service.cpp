@@ -19,30 +19,30 @@ void StreamingService::setup() {
     struct sockaddr_in remote_address{};
 
     stream_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (stream_sock < 0) syserr("socket");
+    if (stream_sock < 0) LogErr::syserr("socket");
 
     int optval = 1;
     if (setsockopt(stream_sock, SOL_SOCKET, SO_BROADCAST, (void *) &optval, sizeof optval) < 0)
-        syserr("setsockopt broadcast");
+        LogErr::syserr("setsockopt broadcast");
 
     if (setsockopt(stream_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
-        syserr("setsockopt reuseaddr in server");
+        LogErr::syserr("setsockopt reuseaddr in server");
 
     optval = TTL_VALUE;
     if (setsockopt(stream_sock, IPPROTO_IP, IP_MULTICAST_TTL, (void *) &optval, sizeof optval) < 0)
-        syserr("setsockopt multicast ttl");
+        LogErr::syserr("setsockopt multicast ttl");
 
     bzero(&remote_address, sizeof(remote_address));
     remote_address.sin_family = AF_INET;
     remote_address.sin_port = htons(data_port);//why data_port?
 
     if (inet_aton(mcast_address.c_str(), &remote_address.sin_addr) == 0)
-        syserr("inet_aton");
+        LogErr::syserr("inet_aton");
 
     //nothing to read from multicast address
     //address is bound to socket
     if (connect(stream_sock, (struct sockaddr *) &remote_address, sizeof remote_address) < 0)
-        syserr("connect");
+        LogErr::syserr("connect");
 
 
 }
