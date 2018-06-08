@@ -3,6 +3,7 @@
 //
 
 #include <client/buffer.h>
+#include <algorithm>
 
 Buffer::Buffer(int size) : size(size) {
     data = new char[size];
@@ -15,17 +16,16 @@ Buffer::~Buffer() {
     delete byteId;
 }
 
-void Buffer::push(const char *buff, int buff_size, int first_byte) {
+void Buffer::push(const char *buff, int packet_size, int first_byte) {
     uint64_t diff = 0;
-
     if (first_byte <= byteId[read_index]) return;
 
     if (byteId[read_index] != -1) {
         diff = first_byte - byteId[read_index];
     }
-    uint64_t from = (read_index + diff) % size;
+    __int128 from = (read_index + diff) % size;
     uint64_t index;
-    for (int i = 0; i < buff_size; ++i) {
+    for (int i = 0; i < packet_size; ++i) {
         index = (i + from) % size;
 
         data[index] = buff[i];
@@ -36,12 +36,14 @@ void Buffer::push(const char *buff, int buff_size, int first_byte) {
 void Buffer::clean() {
     read_index = 0;
     last_read = -1;
+
     for (int i = 0; i < size; ++i) {
         data[i] = 0;
         byteId[i] = -1;
     }
 }
 
+//TODO optimize
 std::pair<int, char *> Buffer::read() {
     int readable = 1;
 
@@ -64,3 +66,4 @@ void Buffer::commit_read(int read_count) {
     last_read = byteId[read_index - 1];
     read_index = (read_index % size);
 }
+

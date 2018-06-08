@@ -33,8 +33,10 @@ struct Session {
     uint64_t session_id = 0;
     Station station = InvalidStation;
     uint64_t max_packet_id = 0;
+    int psize = 0;
 
     void clean() {
+        psize = 0;
         max_packet_id = 0;
         byte0 = 0;
         session_id = 0;
@@ -67,7 +69,7 @@ private:
     bool prefer_station = false;
 
     struct ip_mreq request{};
-    char* read_buffer;
+    char *read_buffer;
 public:
     virtual ~ReceiverService();
 
@@ -84,11 +86,15 @@ public:
 
     void disconnect();
 
-    void restart(Strategy strategy,Station station);
+    void restart(Strategy strategy, Station station);
 
     void check_timeout();
 
     void update_ui();
+
+    void lookup_handler(int fd, uint16_t event);
+
+    void current_server_io_handler(int fd, uint16_t event);
 };
 
 #endif //RADIO_RECIEVER_SERVICE_H

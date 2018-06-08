@@ -27,7 +27,6 @@ public:
 
     SafeBuffer(int size,int psize) : size(size),psize(psize) {}
     SafeBuffer(){};
-    //TODO TEST
     void push(uint64_t p_num, std::string str) {
         std::unique_lock<std::mutex> lock(mut);
         map.emplace(p_num, str);

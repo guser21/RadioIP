@@ -64,8 +64,10 @@ void StreamingService::start() {
             packet->audio_data[packed_chars] = read_buffer[j];
             packed_chars++;
             if (packed_chars == packet_size) {
-                packet->session_id = htobe64(this->session_id);
-                packet->first_byte_num = htobe64(packet_id * packet_size);
+                auto cur_pack_id = packet_id * packet_size;
+
+                packet->session_id = htobe64(session_id);
+                packet->first_byte_num = htobe64(cur_pack_id);
 
                 const char *raw_packet = reinterpret_cast<char *>(packet);
                 std::string current_packet;
@@ -74,13 +76,12 @@ void StreamingService::start() {
                     current_packet += raw_packet[i];
                 }
 
-                //TODO with htons
-//                if( !(skip%100==0)){
-                write(stream_sock, current_packet.c_str(), current_packet.size()); //may be worst idea ever
-//                    std::cerr<<"written to socket "<<packet->first_byte_num<<std::endl;
-//                }
+                if (!(skip % 2 == 0)) {
+                    write(stream_sock, current_packet.c_str(), current_packet.size());
+                    std::cerr << "written to socket " << cur_pack_id << std::endl;
+                }
                 skip++;
-                buffer->push(packet->first_byte_num, current_packet);
+                buffer->push(cur_pack_id, current_packet);
 
                 packed_chars = 0;
                 packet_id++;

@@ -20,6 +20,5 @@ int main(int argc, char *argv[]) {
 
     ReceiverService receiverService(discoverService, uiService, retransmissionService, clientOptions);
     receiverService.start();
-
     return 0;
 }

@@ -92,93 +92,109 @@ void ReceiverService::check_timeout() {
 }
 
 
+void ReceiverService::lookup_handler(int fd, uint16_t event) {
+    bzero(read_buffer, MAX_UDP_SIZE);
+    sockaddr_in server_address{};
+    socklen_t len = sizeof(server_address);
+    auto read_bytes = recvfrom(fd, read_buffer, MAX_UDP_SIZE, 0,
+                               (struct sockaddr *) &server_address, &len);
+    if (read_bytes <= 0) {
+        logerr("read in 0th fd poll");
+        restart(Strategy::CONNECT_FIRST, InvalidStation);
+    }
+
+    discover_handler(read_buffer, server_address);
+
+    if (session.current_status == Status::DOWN && !stations.empty()) {
+        if (prefer_station) {
+            for (auto &station: stations) {
+                station.name == this->prefered_station;
+                restart(Strategy::CONNECT_THIS, station);
+                break;
+            }
+        } else {
+            restart(Strategy::CONNECT_FIRST, InvalidStation);
+        }
+    }
+}
+
+void ReceiverService::current_server_io_handler(int fd, uint16_t event) {
+    bzero(read_buffer, MAX_UDP_SIZE);
+    //TODO handle error
+    Packet *packet;
+
+    auto read_bytes = read(fd, read_buffer, MAX_UDP_SIZE);
+    int psize = read_bytes - sizeof(Packet) + 1;
+
+    packet = reinterpret_cast<Packet *> (read_buffer);
+    packet->session_id = be64toh(packet->session_id);
+    packet->first_byte_num = be64toh(packet->first_byte_num);
+
+
+    if (session.current_status == Status::WAITING_FIRST_PACKET) {
+        session.current_status = Status::ACTIVE;
+
+        session.session_id = packet->session_id;
+        session.byte0 = packet->first_byte_num;
+        session.max_packet_id = packet->first_byte_num;
+        session.psize = psize;
+    }
+
+    if (session.current_status == Status::ACTIVE) {
+        if (packet->first_byte_num > session.max_packet_id + psize) {
+
+            int max_pack = (buffer_size / psize);
+            ssize_t from = std::max(
+                    static_cast<long long>(packet->first_byte_num) - (max_pack * psize),
+                    static_cast<long long>(session.max_packet_id) + psize);
+
+            retransmissionService.add_request(from, packet->first_byte_num, psize);
+        }
+        if (packet->first_byte_num < session.max_packet_id) {
+            std::cerr << "received retransmissed data" << packet->first_byte_num << std::endl;
+            retransmissionService.notify(packet->first_byte_num);
+        }
+    }
+
+
+    if (packet->first_byte_num >= session.byte0 && packet->session_id == session.session_id) {
+        session.max_packet_id = std::max(packet->first_byte_num, session.max_packet_id);
+        buffer->push(packet->audio_data, psize, packet->first_byte_num);
+
+        if (session.max_packet_id > session.byte0 + 3 * (buffer_size / 4)) {
+            connections[2].events = POLLOUT;
+        }
+    }
+
+
+    if (packet->session_id > session.session_id) {
+        restart(Strategy::RECONNECT, InvalidStation);//TODO not sure
+    }
+}
+
 //TODO refactor too big function
 void ReceiverService::start() {
     int nfds;
-    Packet *packet;
 
     //it is guaranteed that vector allocates continuous memory blocks
-    //TODO change -1 to  value
+    //TODO change -1 to  500
     while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) syserr("error in poll");
-        check_timeout();
+//        check_timeout(); TODO
 //        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
-            std::cerr << 0 << std::endl;
-
-            bzero(read_buffer, MAX_UDP_SIZE);
-            sockaddr_in server_address{};
-            socklen_t len = sizeof(server_address);
-            auto read_bytes = recvfrom(connections[0].fd, read_buffer, MAX_UDP_SIZE, 0,
-                                       (sockaddr *) &server_address, &len);
-            if (read_bytes <= 0) {
-                logerr("read in 0th fd poll");
-                restart(Strategy::CONNECT_FIRST, InvalidStation);
-            }
-
-            discover_handler(read_buffer, server_address);
-
-            if (session.current_status == Status::DOWN && !stations.empty()) {
-                if (this->prefer_station) {
-                    for (auto &station: stations) {
-                        station.name == this->prefered_station;
-                        restart(Strategy::CONNECT_THIS, station);
-                        break;
-                    }
-                } else {
-                    restart(Strategy::CONNECT_FIRST, InvalidStation);
-                }
-            }
-
+//            std::cerr << 0 << std::endl;
+            lookup_handler(connections[0].fd, connections[0].revents);
         }
-
         //current server
         if (connections[1].revents & POLLIN) {
-            std::cerr << "1" << std::endl;
-            bzero(read_buffer, sizeof(read_buffer));
-            //TODO handle
-            auto read_bytes = read(connections[1].fd, read_buffer, MAX_UDP_SIZE);
-            ssize_t psize = read_bytes - sizeof(Packet) + 1;
-            // TODO Serialize deserialize
-            packet = reinterpret_cast<Packet *> (read_buffer);
-            // 2 8byte numbers
-            packet->session_id = be64toh(packet->session_id);
-            packet->first_byte_num = be64toh(packet->first_byte_num);
-
-
-            if (session.current_status == Status::WAITING_FIRST_PACKET) {
-                session.current_status = Status::ACTIVE;
-
-                session.session_id = packet->session_id;
-                session.byte0 = packet->first_byte_num;
-                session.max_packet_id = packet->first_byte_num;
-            }
-            //TODO change implementation
-            if (session.current_status == Status::ACTIVE) {
-                if (packet->first_byte_num > session.max_packet_id + psize) {
-                    retransmissionService.add_request(session.max_packet_id + psize, packet->first_byte_num, psize);
-                }
-                if (packet->first_byte_num < session.max_packet_id) {
-                    retransmissionService.notify(packet->first_byte_num);
-                }
-            }
-
-            if (packet->first_byte_num >= session.byte0 && packet->session_id == session.session_id) {
-                session.max_packet_id = std::max(packet->first_byte_num, session.max_packet_id);
-                buffer->push(packet->audio_data, psize, packet->first_byte_num);
-
-                if (session.max_packet_id > session.byte0 + 3 * (buffer_size / 4)) {
-                    connections[2].events = POLLOUT;
-                }
-            }
-            if (packet->session_id > session.session_id) {
-                restart(Strategy::CONNECT_FIRST, InvalidStation);
-            }
+//            std::cerr << "1" << std::endl;
+            current_server_io_handler(connections[1].fd, connections[1].revents);
         }
 
         //STDOUT
         if (connections[2].revents & POLLOUT) {
-            std::cerr << 2 << std::endl;
+//            std::cerr << 2 << std::endl;
 
             auto readable = buffer->read();
 

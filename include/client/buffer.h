@@ -25,13 +25,14 @@ public:
     ~Buffer();
 
 
-    void push(const char arr[], int size, int first_byte);
+    void push(const char arr[], int packet_size, int first_byte);
 
     void clean();
 
     std::pair<int, char *> read();
 
     void commit_read(int read_count);
+
 };
 
 #endif //RADIO_BUFFER_H

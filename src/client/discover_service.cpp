@@ -39,10 +39,9 @@ void DiscoverService::setup() {
     struct sockaddr_in local_address{};
     bzero(&local_address, sizeof(local_address));
 
-//OK
     local_address.sin_family = AF_INET;
     local_address.sin_addr.s_addr = htonl(INADDR_ANY);
-    local_address.sin_port = htons(0);
+    local_address.sin_port = htons(0);//choose yourself
 
     rtvl = bind(disc_socket, (struct sockaddr *) &local_address, sizeof(local_address));
     if (rtvl < 0) syserr("bind in discover service connect");
