@@ -10,7 +10,7 @@ SRC_SERVER = $(wildcard $(SERVER)/*.cpp)
 SRC_COMMON = $(wildcard $(COMMON)/*.cpp)
 
 
-CPPFLAGS	+=	-Iinclude
+CPPFLAGS	+=	-Iinclude  -std=c++17  
 
 LDFLAGS	+=	-lboost_program_options -lpthread
 

@@ -58,7 +58,6 @@ Response UIService::handle_io(int fd, short event) {
         auto read_bytes = read(fd, read_buffer, TCP_READ_BUFFER);
         if (read_bytes <= 0) {
             close(fd);
-            std::cerr << "ui connection lost" << std::endl;
             return Response::REMOVE;
         }
         client.input_buffer.append(read_buffer, read_bytes);

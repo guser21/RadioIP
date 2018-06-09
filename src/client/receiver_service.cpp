@@ -64,6 +64,7 @@ void ReceiverService::restart(Strategy strategy, Station station) {
             connections[1].events = POLLIN;
 
             retransmissionService.restart(station.address);
+            break;
     }
     update_ui();
 }
@@ -150,7 +151,6 @@ void ReceiverService::current_server_io_handler(int fd, uint16_t event) {
             retransmissionService.add_request(from, packet->first_byte_num, psize);
         }
         if (packet->first_byte_num < session.max_packet_id) {
-            std::cerr << "received retransmissed data " << packet->first_byte_num << std::endl;
             retransmissionService.notify(packet->first_byte_num);
         }
     }
@@ -176,7 +176,7 @@ void ReceiverService::start() {
 
     //it is guaranteed that vector allocates continuous memory blocks
     //TODO change -1 to  500
-    while ((nfds = poll(&connections[0], connections.size(), 500)) >= 0) {
+    while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
         if (nfds < 0) Err::syserr("error in poll");
         check_timeout();
         if (connections[0].revents & POLLIN) {
@@ -193,6 +193,7 @@ void ReceiverService::start() {
             auto readable = buffer->read();
 
             if (readable.first == 0) {
+                std::cerr<<"restarted"<<std::endl;
                 restart(Strategy::RECONNECT, InvalidStation);
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
@@ -230,18 +231,24 @@ void ReceiverService::start() {
             switch (resp) {
                 case Response::REMOVE:
                     drop_ui.push_back(i);
+                    break;
                 case Response::UP:
                     if (cur_stationID != -1) {
+                        std::cerr<<"up"<<std::endl;
                         prev_station = ((cur_stationID - 1 + max_id) % max_id);
                         restart(Strategy::CONNECT_THIS, stations[prev_station]);
                     }
+                    break;
                 case Response::DOWN:
                     if (cur_stationID != -1) {
-                        next_station = ((cur_stationID + 1 + max_id) % max_id);
+                        std::cerr<<"down"<<std::endl;
+                        next_station = ((cur_stationID + 1) % max_id);
                         restart(Strategy::CONNECT_THIS, stations[next_station]);
                     }
+                    break;
                 case Response::NOMOREOUT:
                     connections[i].events = POLLIN;
+                    break;
                 case Response::NONE:
                     break;
             }
@@ -310,7 +317,7 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
 
     auto now = std::chrono::system_clock::now().time_since_epoch();
     auto cur_time = std::chrono::duration_cast<std::chrono::seconds>(now).count();
-    bool found = false;//TODO not sure
+    bool found = false;
 
     for (auto &station : stations) {
         if (station == new_station) {
@@ -358,7 +365,7 @@ ReceiverService::ReceiverService(DiscoverService &discoverService,
  *Convention
  *  0 - server_reply socket UDP
  *  1 - current server socket UDP
- *  2 - std out non blocking//TODO not sure
+ *  2 - std out non blocking
  *  3 - ui register socket TCP
  * */
 void ReceiverService::setup() {
