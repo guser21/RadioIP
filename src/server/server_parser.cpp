@@ -7,7 +7,6 @@
 #include <sstream>
 #include <common/const.h>
 
-//TODO take to common file
 static std::vector<std::string> split(const std::string &s, char delim) {
     std::stringstream ss(s);
     std::string item;

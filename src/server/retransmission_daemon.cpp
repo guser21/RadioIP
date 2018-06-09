@@ -26,8 +26,8 @@ void RetransmissionDaemon::start() {
             for (auto el:reqs) {
                 auto packet = safeBuffer->get(el);
                 if (packet.length() != 0) {
+                    //sockets are thread safe
                     write(socket, packet.c_str(), packet.size());
-                    std::cerr<< "sending retransmission " << el<<std::endl;
                 }
             }
         }

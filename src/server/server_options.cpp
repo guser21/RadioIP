@@ -41,6 +41,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
         serverOptions.rtime = vm["-R"].as<int>();
         serverOptions.station_name = vm["-n"].as<std::string>();
 
+
     } catch (std::exception &err) {
         std::cerr << err.what() << std::endl;
         exit(1);

@@ -120,7 +120,6 @@ void ReceiverService::lookup_handler(int fd, uint16_t event) {
 
 void ReceiverService::current_server_io_handler(int fd, uint16_t event) {
     bzero(read_buffer, MAX_UDP_SIZE);
-    //TODO handle error
     Packet *packet;
 
     auto read_bytes = read(fd, read_buffer, MAX_UDP_SIZE);
@@ -151,7 +150,7 @@ void ReceiverService::current_server_io_handler(int fd, uint16_t event) {
             retransmissionService.add_request(from, packet->first_byte_num, psize);
         }
         if (packet->first_byte_num < session.max_packet_id) {
-            std::cerr << "received retransmissed data" << packet->first_byte_num << std::endl;
+            std::cerr << "received retransmissed data " << packet->first_byte_num << std::endl;
             retransmissionService.notify(packet->first_byte_num);
         }
     }
@@ -168,40 +167,33 @@ void ReceiverService::current_server_io_handler(int fd, uint16_t event) {
 
 
     if (packet->session_id > session.session_id) {
-        restart(Strategy::RECONNECT, InvalidStation);//TODO not sure
+        restart(Strategy::RECONNECT, InvalidStation);
     }
 }
 
-//TODO refactor too big function
 void ReceiverService::start() {
     int nfds;
 
     //it is guaranteed that vector allocates continuous memory blocks
     //TODO change -1 to  500
-    while ((nfds = poll(&connections[0], connections.size(), -1)) >= 0) {
+    while ((nfds = poll(&connections[0], connections.size(), 500)) >= 0) {
         if (nfds < 0) Err::syserr("error in poll");
         check_timeout();
-//        0 - server_reply socket UDP
         if (connections[0].revents & POLLIN) {
-            std::cerr << "borewicz received"<< std::endl;
-
             lookup_handler(connections[0].fd, connections[0].revents);
         }
         //current server
         if (connections[1].revents & POLLIN) {
-//            std::cerr << "1" << std::endl;
             current_server_io_handler(connections[1].fd, connections[1].revents);
         }
 
         //STDOUT
         if (connections[2].revents & POLLOUT) {
-//            std::cerr << 2 << std::endl;
 
             auto readable = buffer->read();
 
             if (readable.first == 0) {
                 restart(Strategy::RECONNECT, InvalidStation);
-                std::cerr << "connection restarted: stdout" << std::endl;
             } else {
                 auto written_data = write(STDOUT_FILENO, readable.second, readable.first);
                 fflush(stdout);
@@ -318,7 +310,7 @@ void ReceiverService::discover_handler(char *msg, sockaddr_in server_address) {
 
     auto now = std::chrono::system_clock::now().time_since_epoch();
     auto cur_time = std::chrono::duration_cast<std::chrono::seconds>(now).count();
-    bool found = false;
+    bool found = false;//TODO not sure
 
     for (auto &station : stations) {
         if (station == new_station) {
@@ -348,7 +340,7 @@ ReceiverService::ReceiverService(DiscoverService &discoverService,
     this->ctrl_port = clientOptions.ctrl_port;
     this->prefered_station = clientOptions.prefered_station;
     this->prefer_station = clientOptions.prefer_station;
-    this->read_buffer = new char[MAX_UDP_SIZE];//TODO do I read only one packet with read?
+    this->read_buffer = new char[MAX_UDP_SIZE];
 
 
     this->discoverService.setup();
@@ -366,7 +358,7 @@ ReceiverService::ReceiverService(DiscoverService &discoverService,
  *Convention
  *  0 - server_reply socket UDP
  *  1 - current server socket UDP
- *  2 - std out non blocking
+ *  2 - std out non blocking//TODO not sure
  *  3 - ui register socket TCP
  * */
 void ReceiverService::setup() {

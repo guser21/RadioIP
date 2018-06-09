@@ -56,7 +56,6 @@ void StreamingService::start() {
     ssize_t read_chars, packed_chars = 0;
 
     bzero(read_buffer, sizeof(read_buffer));
-    int skip = 0;
 
     while ((read_chars = read(input_fd, read_buffer, sizeof(read_buffer))) > 0) {
 
@@ -72,15 +71,12 @@ void StreamingService::start() {
                 const char *raw_packet = reinterpret_cast<char *>(packet);
                 std::string current_packet;
 
-                for (int i = 0; i < packet_size + sizeof(Packet)-1; i++) {
+                for (int i = 0; i < packet_size + sizeof(Packet) - 1; i++) {
                     current_packet += raw_packet[i];
                 }
 
-                if (skip % 10 != 0) {
-                    write(stream_sock, current_packet.c_str(), current_packet.size());
-                    std::cerr << "written to socket " << cur_pack_id << std::endl;
-                }
-                skip++;
+                write(stream_sock, current_packet.c_str(), current_packet.size());
+
                 buffer->push(cur_pack_id, current_packet);
 
                 packed_chars = 0;

@@ -36,6 +36,11 @@ void ControlDaemon::setup() {
     if (setsockopt(ctrl_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
         Err::syserr("setsockopt on control daemon server");
 
+    optval = TTL_VALUE;
+    if (setsockopt(ctrl_socket, IPPROTO_IP, IP_MULTICAST_TTL, (void *) &optval, sizeof optval) < 0)
+        Err::syserr("setsockopt multicast ttl");
+
+
     int rtvl = bind(ctrl_socket, (struct sockaddr *) &hostaddr, sizeof(hostaddr));
     if (rtvl < 0) Err::syserr("error in bind ctrl_socket");
 }
@@ -54,6 +59,8 @@ std::string ControlDaemon::station_addr() {
     return res;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
 void ControlDaemon::request_handler() {
     char buffer[CTRL_BUFFER_SIZE];
     ssize_t read_bytes, snd_len;
@@ -64,13 +71,14 @@ void ControlDaemon::request_handler() {
     bzero(&client_addr, sizeof(client_addr));
 
 
-    while ((read_bytes = recvfrom(ctrl_socket, buffer, sizeof(buffer), 0,
-                                  (struct sockaddr *) &client_addr, &socklen)) > 0) {
+    while (true) {
+        read_bytes = recvfrom(ctrl_socket, buffer, sizeof(buffer), 0, (struct sockaddr *) &client_addr, &socklen);
+        if (read_bytes <= 0) Err::logerr("recvfrom in control port");
+
         if (strncmp(buffer, LOOKUP_MSG, read_bytes) == 0) {
             std::string reply = this->station_addr();
             snd_len = sendto(ctrl_socket, reply.c_str(), reply.size(), 0,
                              (struct sockaddr *) &client_addr, socklen);
-//            std::cerr<<reply<<" discover reply"<<std::endl;
             if (snd_len != reply.size()) Err::logerr("sendto in control daemon request handler ");
         }
 
@@ -89,6 +97,7 @@ void ControlDaemon::request_handler() {
         bzero(buffer, sizeof(buffer));
     }
 }
+#pragma clang diagnostic pop
 
 
 ControlDaemon::ControlDaemon(ServerOptions serverOptions, SetMutex<uint64_t> *vecMutex) : retr_req(vecMutex) {

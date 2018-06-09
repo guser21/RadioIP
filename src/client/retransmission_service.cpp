@@ -92,7 +92,6 @@ void RetransmissionService::start() {
             } else {
                 auto millis_now = get_now_mill();
                 auto smallest = retransmissionQueue.begin();
-                //TODO test
                 while (!retransmissionQueue.empty() && smallest->first <= millis_now) {
                     auto msg = serialize_to_msg(smallest->second);
                     auto sent_data = sendto(retr_socket, msg.c_str(), msg.size(), 0,
