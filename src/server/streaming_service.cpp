@@ -76,10 +76,10 @@ void StreamingService::start() {
                     current_packet += raw_packet[i];
                 }
 
-                if (skip % 10 != 0) {
+//                if (skip % 10 != 0) {
                     write(stream_sock, current_packet.c_str(), current_packet.size());
                     std::cerr << "written to socket " << cur_pack_id << std::endl;
-                }
+//                }
                 skip++;
                 buffer->push(cur_pack_id, current_packet);
 

@@ -58,7 +58,7 @@ Station ClientParser::parse(std::string msg) {
     station.data_port = static_cast<uint16_t>(port);
     station.name = msg.substr(name_ind + 1, msg.size() - name_ind - 2);
 
-    station.last_discover = time(nullptr);//TODO change
+    station.last_discover = time(nullptr);
 
     return station;
 }
