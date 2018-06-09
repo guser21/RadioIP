@@ -1,13 +1,13 @@
 #ifndef _ERR_
 #define _ERR_
 
-struct LogErr {
+namespace Err {
 
-    static void fatal(const char *fmt, ...);
+    void fatal(const char *fmt, ...);
 
-    static void logerr(const char *fmt, ...);
+    void logerr(const char *fmt, ...);
 
-    static void syserr(const char *fmt, ...);
+    void syserr(const char *fmt, ...);
 };
 
 

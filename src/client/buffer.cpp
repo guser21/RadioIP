@@ -43,7 +43,6 @@ void Buffer::clean() {
     }
 }
 
-//TODO optimize
 std::pair<int, char *> Buffer::read() {
     int readable = 1;
 

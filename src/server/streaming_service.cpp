@@ -19,30 +19,30 @@ void StreamingService::setup() {
     struct sockaddr_in remote_address{};
 
     stream_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (stream_sock < 0) LogErr::syserr("socket");
+    if (stream_sock < 0) Err::syserr("socket");
 
     int optval = 1;
     if (setsockopt(stream_sock, SOL_SOCKET, SO_BROADCAST, (void *) &optval, sizeof optval) < 0)
-        LogErr::syserr("setsockopt broadcast");
+        Err::syserr("setsockopt broadcast");
 
     if (setsockopt(stream_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
-        LogErr::syserr("setsockopt reuseaddr in server");
+        Err::syserr("setsockopt reuseaddr in server");
 
     optval = TTL_VALUE;
     if (setsockopt(stream_sock, IPPROTO_IP, IP_MULTICAST_TTL, (void *) &optval, sizeof optval) < 0)
-        LogErr::syserr("setsockopt multicast ttl");
+        Err::syserr("setsockopt multicast ttl");
 
     bzero(&remote_address, sizeof(remote_address));
     remote_address.sin_family = AF_INET;
-    remote_address.sin_port = htons(data_port);//why data_port?
+    remote_address.sin_port = htons(data_port);
 
     if (inet_aton(mcast_address.c_str(), &remote_address.sin_addr) == 0)
-        LogErr::syserr("inet_aton");
+        Err::syserr("inet_aton");
 
     //nothing to read from multicast address
     //address is bound to socket
     if (connect(stream_sock, (struct sockaddr *) &remote_address, sizeof remote_address) < 0)
-        LogErr::syserr("connect");
+        Err::syserr("connect");
 
 
 }
@@ -72,14 +72,14 @@ void StreamingService::start() {
                 const char *raw_packet = reinterpret_cast<char *>(packet);
                 std::string current_packet;
 
-                for (int i = 0; i < packet_size + 16; i++) {
+                for (int i = 0; i < packet_size + sizeof(Packet)-1; i++) {
                     current_packet += raw_packet[i];
                 }
 
-//                if (skip % 10 != 0) {
+                if (skip % 10 != 0) {
                     write(stream_sock, current_packet.c_str(), current_packet.size());
                     std::cerr << "written to socket " << cur_pack_id << std::endl;
-//                }
+                }
                 skip++;
                 buffer->push(cur_pack_id, current_packet);
 

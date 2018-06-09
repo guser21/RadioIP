@@ -8,7 +8,7 @@
 #include <cstring>
 #include "common/err.h"
 
-void LogErr::syserr(const char *fmt, ...) {
+void Err::syserr(const char *fmt, ...) {
     va_list fmt_args;
     int err = errno;
 
@@ -21,7 +21,7 @@ void LogErr::syserr(const char *fmt, ...) {
     exit(EXIT_FAILURE);
 }
 
-void LogErr::fatal(const char *fmt, ...) {
+void Err::fatal(const char *fmt, ...) {
     va_list fmt_args;
 
     fprintf(stderr, "ERROR: ");
@@ -34,7 +34,7 @@ void LogErr::fatal(const char *fmt, ...) {
     exit(EXIT_FAILURE);
 }
 
-void LogErr::logerr(const char *fmt, ...) {
+void Err::logerr(const char *fmt, ...) {
     va_list fmt_args;
     int err = errno;
 

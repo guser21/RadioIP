@@ -13,7 +13,7 @@ ServerOptions ServerOptionParser::parse(int argc, char **argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
             (",h", "Available params")
-            (",a", po::value<std::string>()->default_value(MCAST_ADDR)->required(), "set multicast ip address")
+            (",a", po::value<std::string>()->required(), "set multicast ip address")
             (",P", po::value<uint16_t>()->default_value(DATA_PORT), "set data data_port")
             (",C", po::value<uint16_t>()->default_value(CTRL_PORT), "set control data_port")
             (",p", po::value<int>()->default_value(PSIZE), "set packet size ")
