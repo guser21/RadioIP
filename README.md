@@ -12,7 +12,7 @@ To start the client
 ./odbiornik | play -t raw -c 2 -r 44100 -b 16 -e signed-integer --buffer 32768 -
 
 
-To change the channel in client from asci UI
+To change the channel in client from ascii UI
 
 
 telnet localhost 11506
