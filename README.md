@@ -4,11 +4,12 @@ It is an internet radio over multicast UDP. There are three parts for this proje
 
 ## Server
 
-The server is quite simple it streams on a multicast udp group on which clients later register to and receive the stream. You should specify the multicast group address with flag
+The server streams on a multicast udp group on which clients later register and receive the stream. You should specify the multicast group address with flag
 “-a”. Just make sure that they are all different among the stations you run.
 You can also specify a name for your radio station.
 
-`sox -S numb.mp3 -r 44100 -b 16 -e signed-integer -c 2 -t raw - | pv -q -L $((44100*4)) | ./Server -a 239.10.11.12 -n "Radio Yerevan"`
+`sox -S numb.mp3 -r 44100 -b 16 -e signed-integer -c 2 -t raw - | pv -q -L $((44100*4)) 
+| ./Server -a 239.10.11.12 -n "Radio Yerevan"`
 
 | Option | Description |
 | --- | --- |
@@ -23,9 +24,10 @@ You can also specify a name for your radio station.
 
 ## Client
 
-The client supports multiple radio stations streaming at the same time. You can easily connect to the client with telnet and change the station with the ascii ui :D. The client also supports multiple ui connections simultaneously. To set the UI port for the telnet to connect use the flag “-U” .
+The client supports multiple radio stations streaming at the same time. You can easily connect to the client with telnet and change the station with the ascii ui. The client also supports multiple ui connections simultaneously. To set the UI port for the telnet to connect use the flag “-U” .
 
 To turn the stream into audio you also need to pipe it into play program or you can just run it like this
+
 `./Client -U 1111 | play -t raw -c 2 -r 44100 -b 16 -e signed-integer --buffer 32768 -`
 
 | Option | Description |
@@ -47,10 +49,11 @@ With the up and down arrows you can switch between stations.
 
 
 E.g.
+
 `telnet localhost 11111`
 
 ![Radio UI](images/RadioUI.png?raw=true)
 
 
 
-You can run it between multiple computers if your router is configured not to drop multicast packets. The protocol also supports recovery from packet loss so with the right buffer and packet sizes you should get pretty decent sound for all your receivers.
+You can run it among multiple computers if your router is configured not to drop multicast packets. The protocol also supports recovery from packet loss, so with the right buffer and packet sizes you should get pretty decent sound for all your receivers.
