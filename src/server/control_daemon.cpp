@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <strings.h>
 #include <common/err.h>
-#include <zconf.h>
+#include <unistd.h>
 #include <cstring>
 #include <sstream>
 #include <utility>

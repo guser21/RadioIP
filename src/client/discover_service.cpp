@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <thread>
-#include <zconf.h>
+#include <unistd.h>
 #include <common/const.h>
 #include <iostream>
 #include <client/station.h>

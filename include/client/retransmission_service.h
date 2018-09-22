@@ -10,7 +10,7 @@
 #include <poll.h>
 #include <common/err.h>
 #include <thread>
-#include <zconf.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <atomic>

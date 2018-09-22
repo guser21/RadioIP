@@ -8,7 +8,7 @@
 #include <common/err.h>
 #include <common/const.h>
 #include <iostream>
-#include <zconf.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <strings.h>
 #include <poll.h>
